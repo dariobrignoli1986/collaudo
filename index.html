@@ -186,6 +186,14 @@
   .btn-lock:hover{background:var(--accent-ink)}
   .lock-err{display:block; margin-top:var(--s2); color:var(--ko); font-size:13px; font-weight:600}
   @media print{ .lock{display:none !important} }
+
+  /* ---- Torna su (FAB) ---- */
+  .to-top{position:fixed; right:16px; bottom:16px; z-index:120; width:52px; height:52px; border-radius:999px;
+    border:none; background:var(--accent); color:#fff; font-size:24px; line-height:1; cursor:pointer;
+    box-shadow:0 6px 18px rgba(0,0,0,.28); display:flex; align-items:center; justify-content:center}
+  .to-top:hover{background:var(--accent-ink)}
+  .to-top:focus-visible{outline:3px solid #fff; outline-offset:2px}
+  @media print{ .to-top{display:none !important} }
 </style>
 </head>
 <body>
@@ -302,6 +310,8 @@
   </section>
 
 </div>
+
+<button id="toTop" class="to-top" hidden aria-label="Torna su" title="Torna su">↑</button>
 
 <script>
 "use strict";
@@ -714,6 +724,19 @@ function zipStore(files){ // files: [{name, bytes}]
   return new Blob([...parts, ...central, new Uint8Array(e.buffer)], {type:"application/zip"});
 }
 
+/* ====== SALVATAGGIO FILE (condivisione iOS o download) ====== */
+async function saveBlob(blob, name, mime){
+  try{
+    const file=new File([blob], name, {type:mime||blob.type});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:name});
+      return;
+    }
+  }catch(e){ if(e && e.name==="AbortError") return; }
+  const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+
 /* ====== HYDRATE + PRINT HEAD ====== */
 function hydratePaths(){
   document.querySelectorAll("[data-path]").forEach(inp=>{ const v=getVal(inp.dataset.path); if(v!=null) inp.value=v; });
@@ -775,7 +798,7 @@ document.getElementById("btnSalva").addEventListener("click", ()=>{
   const t=state.testata||{};
   const name=`collaudo_${san(t.modello||"laser")}_${san(t.matricola||"matr")}.json`;
   const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
-  const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
+  saveBlob(blob, name, "application/json");
 });
 document.getElementById("btnZip").addEventListener("click", ()=>{
   const files=[];
@@ -783,7 +806,7 @@ document.getElementById("btnZip").addEventListener("click", ()=>{
   if(!files.length){ alert("Nessuna foto da archiviare."); return; }
   const blob=zipStore(files); const t=state.testata||{};
   const name=`collaudo_${san(t.matricola||"matr")}_foto.zip`;
-  const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
+  saveBlob(blob, name, "application/zip");
 });
 document.getElementById("btnCarica").addEventListener("click", ()=> document.getElementById("fileInput").click());
 document.getElementById("fileInput").addEventListener("change", e=>{
@@ -804,6 +827,14 @@ function renderAll(){
   hydratePaths(); autosizeAll(); updatePrintHead();
 }
 renderAll(); markSaved();
+
+/* tasto "torna su": compare dopo aver scrollato */
+const toTop=document.getElementById("toTop");
+function toggleToTop(){ toTop.hidden = window.scrollY < 500; }
+window.addEventListener("scroll", toggleToTop, {passive:true});
+toTop.addEventListener("click", ()=> window.scrollTo({top:0, behavior:"smooth"}));
+toggleToTop();
+
 window.addEventListener("beforeunload", persist);
 window.addEventListener("beforeprint", autosizeAll);
 </script>
