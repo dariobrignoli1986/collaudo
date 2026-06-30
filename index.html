@@ -3,840 +3,118 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Modulo Collaudo Laser — Warcom</title>
+<title>Fogli di Collaudo — Warcom</title>
 <style>
   :root{
     --ink:#15202e; --ink-soft:#3d4d60; --muted:#64748b;
     --bg:#eef1f4; --surface:#ffffff; --line:#d3dae2; --line-strong:#b6c0cc;
     --accent:#1f4e79; --accent-ink:#0f3354;
-    --ok:#15803d; --ok-bg:#e7f4ec; --ko:#b91c1c; --ko-bg:#fbe9e9;
-    --na:#5b6775; --na-bg:#eceff2; --warn:#b45309;
+    --ok:#15803d; --ok-bg:#e7f4ec; --warn:#b45309; --warn-bg:#fbf1e0;
     --sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
     --mono: ui-monospace, "Cascadia Mono", "Consolas", "SF Mono", monospace;
-    --s1:8px; --s2:16px; --s3:24px; --s4:40px; --radius:8px;
+    --s1:8px; --s2:16px; --s3:24px; --s4:40px; --radius:10px;
   }
   *{box-sizing:border-box}
-  [hidden]{display:none !important}
-  html,body{margin:0; overflow-x:hidden}
-  img,input,textarea,select{max-width:100%}
-  body{font-family:var(--sans); color:var(--ink); background:var(--bg); line-height:1.5; font-size:15px; -webkit-font-smoothing:antialiased}
-  .wrap{max-width:1100px; margin:0 auto; padding:0 var(--s2) var(--s4)}
+  html,body{margin:0}
+  body{font-family:var(--sans); color:var(--ink); background:var(--bg); line-height:1.5; font-size:16px; -webkit-font-smoothing:antialiased}
 
-  /* ---- Toolbar ---- */
-  .toolbar{position:sticky; top:0; z-index:50; background:var(--accent); color:#fff; border-bottom:3px solid var(--accent-ink)}
-  .toolbar-in{max-width:1100px; margin:0 auto; padding:10px var(--s2); display:flex; align-items:center; gap:var(--s2); flex-wrap:wrap}
-  .toolbar h1{font-size:16px; margin:0; font-weight:700; white-space:nowrap}
-  .toolbar h1 span{font-weight:400; opacity:.8}
-  .tb-actions{margin-left:auto; display:flex; gap:var(--s1); flex-wrap:wrap}
-  .btn{font:inherit; font-size:13px; font-weight:600; cursor:pointer; border:1px solid rgba(255,255,255,.35);
-    background:rgba(255,255,255,.12); color:#fff; padding:8px 14px; border-radius:6px; min-height:44px;
-    display:inline-flex; align-items:center; gap:6px; transition:background .15s ease}
-  .btn:hover{background:rgba(255,255,255,.24)}
-  .btn:focus-visible{outline:3px solid #fff; outline-offset:2px}
-  .btn-primary{background:#fff; color:var(--accent-ink); border-color:#fff}
-  .btn-primary:hover{background:#eaf1f8}
-  .btn-accent{background:var(--accent); color:#fff; border-color:var(--accent)}
-  .save-state{font-size:12px; opacity:.9; white-space:nowrap}
-  .save-state.dirty{opacity:1; font-weight:600}
+  .topbar{background:var(--accent); color:#fff; border-bottom:3px solid var(--accent-ink)}
+  .topbar-in{max-width:920px; margin:0 auto; padding:18px var(--s2)}
+  .topbar h1{font-size:20px; margin:0; font-weight:700}
+  .topbar h1 span{font-weight:400; opacity:.82}
+  .topbar p{margin:4px 0 0; font-size:13.5px; opacity:.85}
 
-  /* ---- Sections ---- */
-  section.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); margin-top:var(--s3); overflow:hidden}
-  .card > h2{font-size:17px; margin:0; padding:14px var(--s3); background:#f6f8fa; border-bottom:1px solid var(--line);
-    display:flex; align-items:center; gap:var(--s2)}
-  .card > h2 .num{font:600 12px/1 var(--mono); color:#fff; background:var(--accent); padding:5px 8px; border-radius:5px}
-  .progress{margin-left:auto; font:600 12px/1 var(--mono); color:var(--muted); background:var(--na-bg); padding:5px 10px; border-radius:999px}
-  .progress.done{color:var(--ok); background:var(--ok-bg)}
-  .card-body{padding:var(--s3)}
+  .wrap{max-width:920px; margin:0 auto; padding:var(--s3) var(--s2) var(--s4)}
+  .group{margin-top:var(--s3)}
+  .group:first-child{margin-top:var(--s1)}
+  .group > h2{font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);
+    margin:0 0 var(--s2); padding-bottom:6px; border-bottom:1px solid var(--line)}
 
-  /* ---- Form fields ---- */
-  .grid{display:grid; gap:var(--s2)}
-  .grid.c2{grid-template-columns:1fr 1fr}
-  .grid.c3{grid-template-columns:1fr 1fr 1fr}
-  .grid.c4{grid-template-columns:repeat(4,1fr)}
-  @media (max-width:760px){ .grid.c2,.grid.c3,.grid.c4{grid-template-columns:1fr} }
-  .field{display:flex; flex-direction:column; gap:4px; min-width:0}
-  .field label{font-size:12.5px; font-weight:600; color:var(--ink-soft)}
-  .field input, .field textarea, .field select{font:inherit; font-size:14px; padding:9px 10px; border:1px solid var(--line-strong);
-    border-radius:6px; background:#fff; color:var(--ink); width:100%; min-height:44px}
-  textarea.grow{resize:none; overflow:hidden; min-height:44px; line-height:1.4}
-  .field .code{font-family:var(--mono); font-size:13px}
-  .field input:focus, .field textarea:focus, .field select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(31,78,121,.18)}
+  .cards{display:grid; grid-template-columns:1fr 1fr; gap:var(--s2)}
+  @media (max-width:620px){ .cards{grid-template-columns:1fr} }
 
-  /* ---- Component blocks ---- */
-  .comp{border:1px solid var(--line); border-radius:var(--radius); padding:var(--s2); margin-bottom:var(--s2)}
-  .comp > h3{margin:0 0 var(--s2); font-size:14px; color:var(--accent-ink); display:flex; align-items:center; gap:var(--s1); flex-wrap:wrap}
-  .comp > h3 .tag{font:600 11px/1 var(--mono); background:var(--na-bg); color:var(--muted); padding:4px 7px; border-radius:5px}
-  .axis-row{margin-bottom:12px}
-  .axis-row > strong{font-family:var(--mono); color:var(--accent-ink); font-size:13px}
-  .sub-add{display:flex; gap:var(--s1); align-items:center; flex-wrap:wrap; margin-top:var(--s1)}
-  .mini-del{border:none; background:#eef3f8; color:var(--muted); cursor:pointer; border-radius:6px; padding:8px 12px; font:inherit; font-size:13px; min-height:40px}
-  .mini-del:hover{background:var(--ko-bg); color:var(--ko)}
+  .card{display:flex; align-items:center; gap:var(--s2); text-decoration:none; color:inherit;
+    background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--accent);
+    border-radius:var(--radius); padding:16px 18px; min-height:74px; transition:border-color .15s, box-shadow .15s, transform .05s}
+  .card:hover{border-color:var(--line-strong); border-left-color:var(--accent-ink); box-shadow:0 4px 14px rgba(15,51,84,.12)}
+  .card:active{transform:translateY(1px)}
+  .card:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
+  .card .body{flex:1; min-width:0}
+  .card .name{font-weight:700; font-size:16px; color:var(--accent-ink)}
+  .card .desc{font-size:13px; color:var(--muted); margin-top:2px}
+  .card .go{font-size:20px; color:var(--line-strong); flex:none}
+  .card:hover .go{color:var(--accent)}
 
-  /* ---- Checklist rows ---- */
-  .check{display:grid; grid-template-columns:1fr 168px 150px 1.2fr auto; gap:var(--s2); align-items:end;
-    padding:12px 0; border-bottom:1px solid var(--line)}
-  .check:last-child{border-bottom:none}
-  .check.off{opacity:.45}
-  @media (max-width:880px){ .check{grid-template-columns:1fr; gap:10px; padding:14px 0} .check .desc{padding-bottom:0} }
-  .check .desc{font-weight:600; align-self:center}
-  .check .desc .na-toggle{display:inline-flex; align-items:center; gap:5px; font-weight:500; font-size:12px; color:var(--muted); margin-left:10px; cursor:pointer}
-  .esito{display:flex; gap:4px}
-  .esito button{flex:1; font:600 12px/1 var(--sans); cursor:pointer; padding:10px 4px; border:1px solid var(--line-strong);
-    background:#fff; color:var(--muted); border-radius:6px; min-height:44px}
-  .esito button[aria-pressed="true"][data-v="OK"]{background:var(--ok-bg); color:var(--ok); border-color:var(--ok)}
-  .esito button[aria-pressed="true"][data-v="KO"]{background:var(--ko-bg); color:var(--ko); border-color:var(--ko)}
-  .esito button[aria-pressed="true"][data-v="NA"]{background:var(--na-bg); color:var(--na); border-color:var(--na)}
-  .esito button:focus-visible{outline:3px solid var(--accent); outline-offset:1px}
-  .check select.opt{font:inherit; font-size:13px; padding:9px; border:1px solid var(--line-strong); border-radius:6px; min-height:44px}
+  .badge{font:600 11px/1 var(--mono); padding:5px 8px; border-radius:999px; white-space:nowrap; align-self:flex-start; margin-top:2px}
+  .badge.ok{color:var(--ok); background:var(--ok-bg)}
+  .badge.draft{color:var(--warn); background:var(--warn-bg)}
 
-  .axis-sub{border-left:3px solid var(--line-strong); padding-left:var(--s2); margin:var(--s1) 0 var(--s3)}
-  .axis-sub > h4{margin:var(--s2) 0 0; font:700 14px/1.2 var(--mono); color:var(--accent-ink)}
-  .sec-group{margin-bottom:var(--s3)}
-  .sec-group > h3{font-size:15px; color:var(--accent-ink); margin:0 0 var(--s1); border-bottom:2px solid var(--line); padding-bottom:6px}
-
-  /* ---- Chips (assi) ---- */
-  .chips{display:flex; flex-wrap:wrap; gap:var(--s1); margin-bottom:var(--s2)}
-  .chip{display:inline-flex; align-items:center; gap:6px; background:#eef3f8; border:1px solid var(--line-strong);
-    border-radius:999px; padding:8px 8px 8px 14px; font:600 13px/1 var(--mono); color:var(--accent-ink)}
-  .chip button{border:none; background:#d6e0ea; color:var(--accent-ink); width:26px; height:26px; border-radius:999px;
-    cursor:pointer; font-size:16px; line-height:1; display:grid; place-items:center}
-  .chip button:hover{background:var(--ko-bg); color:var(--ko)}
-  .add-axis{display:flex; gap:var(--s1); max-width:380px}
-  .add-axis input{flex:1; font:inherit; padding:9px 10px; border:1px solid var(--line-strong); border-radius:6px; min-height:44px}
-
-  /* ---- Prove di taglio (card) ---- */
-  .prova{border:1px solid var(--line); border-radius:var(--radius); padding:var(--s2); margin-bottom:var(--s2)}
-  .prova-head{display:flex; align-items:center; gap:var(--s1); margin-bottom:var(--s2)}
-  .prova-head .pn{font:700 13px/1 var(--mono); background:var(--accent); color:#fff; padding:6px 9px; border-radius:5px}
-  .prova-head .row-del{margin-left:auto}
-  .foto-gal{display:flex; flex-wrap:wrap; gap:var(--s1); margin-top:var(--s2)}
-  .foto-item{position:relative; width:120px}
-  .foto-item img{width:120px; height:90px; object-fit:cover; border-radius:6px; border:1px solid var(--line-strong); display:block}
-  .foto-item .fn{font:600 9px/1.2 var(--mono); color:var(--muted); word-break:break-all; margin-top:3px}
-  .foto-item .fdel{position:absolute; top:4px; right:4px; background:rgba(0,0,0,.6); color:#fff; border:none; width:24px; height:24px;
-    border-radius:999px; cursor:pointer; font-size:15px; line-height:1}
-  .row-del{border:1px solid var(--line-strong); background:#fff; color:var(--muted); cursor:pointer; font-size:14px;
-    padding:8px 12px; border-radius:6px; min-height:40px}
-  .row-del:hover{color:var(--ko); border-color:var(--ko)}
-
-  .hint{font-size:13px; color:var(--muted); margin:0 0 var(--s2)}
-  .add-row{margin-top:var(--s2)}
-  .lead{color:var(--ink-soft); margin:0 0 var(--s3); max-width:74ch}
-
-  /* allegato fotografico: solo in stampa */
-  #sec-allegato{display:none}
-  .alleg-grp{margin-bottom:var(--s2)}
-  .alleg-gal{display:flex; flex-wrap:wrap; gap:8px}
-  .alleg-item{margin:0; width:31%}
-  .alleg-item img{width:100%; border:1px solid var(--line-strong); border-radius:4px; display:block}
-  .alleg-item figcaption{font:9px/1.2 var(--mono); color:#444; word-break:break-all; margin-top:2px}
-
-  /* ---- PRINT (PDF) ---- */
-  @media print{
-    @page{ size:A4; margin:12mm 10mm; }
-    body{background:#fff; font-size:10px}
-    .toolbar, .no-print, .esito button[aria-pressed="false"], .row-del, .fdel, .add-row, .add-axis, .sub-add, .chip button, .hint, .lead, .na-toggle{display:none !important}
-    .wrap{max-width:none; padding:0}
-    .grid.c2{grid-template-columns:1fr 1fr !important}
-    .grid.c3{grid-template-columns:1fr 1fr 1fr !important}
-    .grid.c4{grid-template-columns:1fr 1fr 1fr 1fr !important}
-    .grid{gap:6px 14px}
-    section.card{border:1px solid #999; margin-top:6px; box-shadow:none}
-    .card > h2{background:#fff; border-bottom:1.5px solid #333; font-size:12px; padding:5px 8px; break-after:avoid}
-    .card > h2 .num{background:#333}
-    .progress{display:none}
-    .card-body{padding:8px 10px}
-    .field{gap:1px}
-    .field input, .field textarea, .field select{border:none; border-bottom:1px solid #bbb; border-radius:0; padding:1px 0; min-height:0; box-shadow:none; font-size:10px}
-    .field select{appearance:none; -webkit-appearance:none}
-    input[type=date]::-webkit-calendar-picker-indicator, input[type=datetime-local]::-webkit-calendar-picker-indicator{display:none}
-    textarea.grow{overflow:visible !important}
-    .field label{color:#444; font-size:8px; font-weight:600}
-    .comp{break-inside:avoid; border:1px solid #bbb; padding:6px 8px; margin-bottom:6px}
-    .comp > h3{font-size:11px; margin-bottom:5px}
-    .check{break-inside:avoid; padding:3px 0; grid-template-columns:1fr 84px 110px 1fr; gap:8px; align-items:end}
-    .check.off{display:none}
-    .esito button{border:1.5px solid #333; min-height:0; padding:2px 8px; font-size:10px; flex:none; border-radius:3px}
-    .check select.opt{border:none; border-bottom:1px solid #bbb; min-height:0; padding:1px 0; font-size:10px}
-    .axis-sub{margin:2px 0 8px} .axis-sub > h4{font-size:11px; margin-top:6px}
-    .sec-group > h3{font-size:12px}
-    .chip{border:1px solid #333; background:#fff; padding:3px 9px; font-size:11px}
-    .prova{break-inside:avoid; border:1px solid #bbb; padding:6px 8px}
-    .prova .foto-gal{display:none}            /* in stampa le foto vanno solo nell'allegato */
-    #sec-allegato{display:block}
-    .alleg-grp{break-inside:avoid; margin-bottom:8px}
-    .alleg-grp h4{font-size:11px; color:var(--accent-ink); margin:6px 0 4px}
-    .alleg-item{width:31%}
-    .print-head{display:block !important; margin-bottom:6px}
-    .print-head h1{font-size:15px} .print-head .meta{font-size:10px}
-  }
-  .print-head{display:none}
-  .print-head h1{font-size:18px; margin:0 0 4px}
-  .print-head .meta{font:12px/1.5 var(--mono); color:#333}
-
-  /* ---- Lock screen ---- */
-  .lock{position:fixed; inset:0; z-index:200; background:var(--accent); display:flex; align-items:center; justify-content:center; padding:var(--s2)}
-  .lock-box{background:#fff; border-radius:12px; padding:var(--s4) var(--s3); width:100%; max-width:380px; text-align:center; box-shadow:0 12px 40px rgba(0,0,0,.25)}
-  .lock-logo{font-size:34px; margin-bottom:var(--s1)}
-  .lock-box h1{font-size:18px; margin:0 0 var(--s1); color:var(--accent-ink)}
-  .lock-box p{font-size:14px; color:var(--muted); margin:0 0 var(--s3)}
-  .lock-box input{width:100%; font:inherit; font-size:16px; padding:12px 14px; border:1px solid var(--line-strong); border-radius:8px; min-height:48px; text-align:center}
-  .lock-box input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(31,78,121,.18)}
-  .btn-lock{width:100%; margin-top:var(--s2); font:inherit; font-weight:700; font-size:15px; color:#fff; background:var(--accent); border:none; border-radius:8px; min-height:48px; cursor:pointer}
-  .btn-lock:hover{background:var(--accent-ink)}
-  .lock-err{display:block; margin-top:var(--s2); color:var(--ko); font-size:13px; font-weight:600}
-  @media print{ .lock{display:none !important} }
-
-  /* ---- Torna su (FAB) ---- */
-  .to-top{position:fixed; right:16px; bottom:16px; z-index:120; width:52px; height:52px; border-radius:999px;
-    border:none; background:var(--accent); color:#fff; font-size:24px; line-height:1; cursor:pointer;
-    box-shadow:0 6px 18px rgba(0,0,0,.28); display:flex; align-items:center; justify-content:center}
-  .to-top:hover{background:var(--accent-ink)}
-  .to-top:focus-visible{outline:3px solid #fff; outline-offset:2px}
-  @media print{ .to-top{display:none !important} }
+  .foot{margin-top:var(--s4); font-size:12.5px; color:var(--muted); text-align:center; line-height:1.6}
 </style>
 </head>
 <body>
 
-<div id="lock" class="lock" hidden>
-  <form class="lock-box" id="lockForm">
-    <div class="lock-logo">🔒</div>
-    <h1>Collaudo Laser · Warcom</h1>
-    <p>Inserisci la password per accedere al modulo.</p>
-    <input type="password" id="lockPw" placeholder="Password" autocomplete="current-password" autofocus>
-    <button type="submit" class="btn-lock">Entra</button>
-    <span class="lock-err" id="lockErr" hidden>Password errata</span>
-  </form>
-</div>
-
-<header class="toolbar">
-  <div class="toolbar-in">
-    <h1>Collaudo Laser <span>· Warcom</span></h1>
-    <span class="save-state" id="saveState">—</span>
-    <div class="tb-actions">
-      <button class="btn" id="btnNuovo">🗋 Nuovo</button>
-      <button class="btn" id="btnCarica">📂 Carica .json</button>
-      <button class="btn" id="btnSalva">💾 Salva .json</button>
-      <button class="btn" id="btnZip">🗜 Foto .zip</button>
-      <button class="btn btn-primary" id="btnPdf">🖨 Genera PDF</button>
-      <input type="file" id="fileInput" accept=".json,application/json" hidden>
-    </div>
+<header class="topbar">
+  <div class="topbar-in">
+    <h1>Fogli di Collaudo <span>· Warcom</span></h1>
+    <p>Scegli la macchina da collaudare. Ogni modulo funziona offline e salva il lavoro nel browser.</p>
   </div>
 </header>
 
-<div class="wrap">
+<main class="wrap">
 
-  <div class="print-head">
-    <h1 id="phTitle">Modulo Collaudo Laser</h1>
-    <div class="meta" id="phMeta"></div>
-  </div>
+  <section class="group">
+    <h2>Macchine laser</h2>
+    <div class="cards">
+      <a class="card" href="italo.html">
+        <div class="body"><div class="name">Italo</div><div class="desc">Laser tubo (Fibertube Italo)</div></div>
+        <span class="badge ok">V1.0</span><span class="go" aria-hidden="true">→</span>
+      </a>
+      <a class="card" href="laser-piano.html">
+        <div class="body"><div class="name">Laser piano</div><div class="desc">Taglio laser di lamiera piana</div></div>
+        <span class="badge draft">V0.1</span><span class="go" aria-hidden="true">→</span>
+      </a>
+    </div>
+  </section>
 
-  <p class="lead">
-    Modulo di collaudo digitale per laser Warcom. Il lavoro si <strong>salva da solo</strong> nel browser a ogni modifica.
-    Per spegnere e riprendere (anche su un altro PC) usa <strong>Salva .json</strong> / <strong>Carica .json</strong>.
-    A fine collaudo premi <strong>Genera PDF</strong>. Usabile anche da telefono.
+  <section class="group">
+    <h2>Altre macchine</h2>
+    <div class="cards">
+      <a class="card" href="plasma.html">
+        <div class="body"><div class="name">Plasma</div><div class="desc">Taglio plasma</div></div>
+        <span class="badge draft">V0.1</span><span class="go" aria-hidden="true">→</span>
+      </a>
+      <a class="card" href="cesoie.html">
+        <div class="body"><div class="name">Cesoie</div><div class="desc">Cesoia / taglio a ghigliottina</div></div>
+        <span class="badge draft">V0.1</span><span class="go" aria-hidden="true">→</span>
+      </a>
+      <a class="card" href="presse-piegatrici.html">
+        <div class="body"><div class="name">Presse piegatrici</div><div class="desc">Piegatura lamiera</div></div>
+        <span class="badge draft">V0.1</span><span class="go" aria-hidden="true">→</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2>Automazioni</h2>
+    <div class="cards">
+      <a class="card" href="automazione-laser-piano.html">
+        <div class="body"><div class="name">Automazione laser piano</div><div class="desc">Asservimento / magazzino laser piano</div></div>
+        <span class="badge draft">V0.1</span><span class="go" aria-hidden="true">→</span>
+      </a>
+      <a class="card" href="automazione-laser-tubo.html">
+        <div class="body"><div class="name">Automazione laser tubo</div><div class="desc">Caricatore / asservimento laser tubo</div></div>
+        <span class="badge draft">V0.1</span><span class="go" aria-hidden="true">→</span>
+      </a>
+    </div>
+  </section>
+
+  <p class="foot">
+    Warcom · Technology Center — moduli di collaudo digitali.<br>
+    <span style="color:var(--ok)">V1.0</span> = pronto all'uso · <span style="color:var(--warn)">V0.1</span> = bozza in lavorazione.
   </p>
 
-  <!-- 1. TESTATA -->
-  <section class="card" id="sec-testata">
-    <h2><span class="num">1</span> Testata commessa</h2>
-    <div class="card-body">
-      <div class="grid c3">
-        <div class="field"><label>Compilato da</label><textarea class="grow" rows="1" data-path="testata.compilatore" placeholder="Nome di chi compila"></textarea></div>
-        <div class="field"><label>Macchina tipo e modello</label><textarea class="grow" rows="1" data-path="testata.modello" placeholder="es. FIBERTUBE ITALO 60-200"></textarea></div>
-        <div class="field"><label>Numero commessa</label><textarea class="grow code" rows="1" data-path="testata.commessa"></textarea></div>
-        <div class="field"><label>Matricola</label><textarea class="grow code" rows="1" data-path="testata.matricola"></textarea></div>
-        <div class="field"><label>Cliente</label><textarea class="grow" rows="1" data-path="testata.cliente"></textarea></div>
-        <div class="field"><label>Numero assi (auto)</label><input id="numAssi" readonly style="background:#f6f8fa"></div>
-        <div class="field"><label>Rif. Norma</label><textarea class="grow" rows="1" data-path="testata.norma"></textarea></div>
-        <div class="field"><label>Lingua</label><textarea class="grow" rows="1" data-path="testata.lingua" placeholder="es. ITA/SPA"></textarea></div>
-        <div class="field"><label>Revisione modulo</label><textarea class="grow code" rows="1" data-path="testata.revisione"></textarea></div>
-        <div class="field"><label>Inizio collaudo</label><input type="datetime-local" data-path="testata.inizio"></div>
-        <div class="field"><label>Fine collaudo</label><input type="datetime-local" data-path="testata.fine"></div>
-      </div>
-    </div>
-  </section>
+</main>
 
-  <!-- 2. ASSI -->
-  <section class="card" id="sec-assi">
-    <h2><span class="num">2</span> Configurazione assi</h2>
-    <div class="card-body">
-      <p class="hint">Gli assi qui definiti generano automaticamente i blocchi <strong>Drive</strong>, <strong>Motori</strong> e la sezione <strong>Prima movimentazione</strong>; il numero assi in testata si aggiorna da solo.</p>
-      <div class="chips" id="axisChips"></div>
-      <div class="add-axis no-print">
-        <input id="newAxis" placeholder="Nuovo asse (es. RC1)">
-        <button class="btn btn-accent" id="btnAddAxis">+ Aggiungi</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- 3. COMPONENTI -->
-  <section class="card" id="sec-componenti">
-    <h2><span class="num">3</span> Anagrafica componenti</h2>
-    <div class="card-body" id="componentiBody"></div>
-  </section>
-
-  <!-- 4. CHECKLIST -->
-  <section class="card" id="sec-checklist">
-    <h2><span class="num">4</span> Checklist di collaudo <span class="progress" id="prog-check">0/0</span></h2>
-    <div class="card-body" id="checklistBody"></div>
-  </section>
-
-  <!-- 5. PROVE DI TAGLIO -->
-  <section class="card" id="sec-prove">
-    <h2><span class="num">5</span> Prove di taglio</h2>
-    <div class="card-body">
-      <p class="hint">Una scheda per prova. Da telefono puoi scattare le foto del taglio: vengono rinominate coi dati della prova e un numero progressivo.</p>
-      <div id="proveBody"></div>
-      <button class="btn btn-accent add-row no-print" id="btnAddProva">+ Aggiungi prova</button>
-      <div class="grid c2" style="margin-top:var(--s3)">
-        <div class="field"><label>Controllo temperature (da app)</label><textarea class="grow" rows="1" data-path="prove_extra.temperature"></textarea></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ALLEGATO FOTOGRAFICO (solo PDF) -->
-  <section class="card" id="sec-allegato">
-    <h2><span class="num">📷</span> Allegato fotografico</h2>
-    <div class="card-body" id="allegatoBody"></div>
-  </section>
-
-  <!-- 6. NOTE -->
-  <section class="card" id="sec-note">
-    <h2><span class="num">6</span> Note di collaudo</h2>
-    <div class="card-body">
-      <div class="field"><textarea class="grow" data-path="note" rows="3" placeholder="Annotazioni libere: anomalie, parti sostituite, particolarità della macchina…" style="min-height:90px"></textarea></div>
-    </div>
-  </section>
-
-</div>
-
-<button id="toTop" class="to-top" hidden aria-label="Torna su" title="Torna su">↑</button>
-
-<script>
-"use strict";
-const LS_KEY = "collaudo-laser-warcom-v2";
-
-/* ====== CANCELLETTO PASSWORD (deterrente, non sicurezza reale) ======
-   Per CAMBIARE la password: apri la pagina, premi F12 (Console), scrivi  lockHash('nuova-password')
-   copia il valore stampato e incollalo qui sotto al posto di PW_HASH. */
-const PW_HASH = "2490678e";  // password attuale: "warcom"
-const UNLOCK_KEY = "collaudo-unlock";
-function pwHash(s){ let x=5381; for(let i=0;i<s.length;i++) x=((x<<5)+x+s.charCodeAt(i))>>>0; return x.toString(16); }
-window.lockHash = s => { const h=pwHash(s); console.log("Impronta di «"+s+"» → incolla in PW_HASH:", h); return h; };
-(function gate(){
-  const lock=document.getElementById("lock");
-  let ok=false; try{ ok = localStorage.getItem(UNLOCK_KEY)===PW_HASH; }catch(e){}
-  if(ok){ lock.hidden=true; return; }
-  lock.hidden=false;
-  document.getElementById("lockForm").addEventListener("submit", e=>{
-    e.preventDefault();
-    const pw=document.getElementById("lockPw").value;
-    if(pwHash(pw)===PW_HASH){ try{ localStorage.setItem(UNLOCK_KEY, PW_HASH); }catch(e){} lock.hidden=true; }
-    else { document.getElementById("lockErr").hidden=false; document.getElementById("lockPw").select(); }
-  });
-})();
-
-/* ====== SCHEMI ====== */
-const LAN = ["","LAN1","LAN2"];
-
-const COMPONENTI = [
-  {id:"pannello", t:"Pannello operatore", secondari:true, campi:[
-    {k:"modello",l:"Modello"},{k:"serie",l:"N° di serie",code:1},{k:"codice",l:"Code ordinazione",code:1},
-    {k:"lan1",l:"Indirizzo LAN1",code:1},{k:"lan2",l:"Indirizzo LAN2",code:1},{k:"subnet",l:"Subnet Mask",code:1}]},
-  {id:"rack", t:"Rack CN Esa", campi:[
-    {k:"modello",l:"Modello"},{k:"serie",l:"N° di serie",code:1},{k:"codice",l:"Code ordinazione",code:1},
-    {k:"ip",l:"Indirizzo IP",code:1},{k:"lan",l:"Collegato a",type:"lan"}]},
-  {id:"software", t:"Versione Software", campi:[
-    {k:"plc",l:"Versione PLC User",code:1},{k:"iso",l:"Versione ISO User",code:1},{k:"ambiente",l:"Ambiente"}]},
-  {id:"quadro", t:"Quadro elettrico", campi:[
-    {k:"fornitore",l:"Fornitore"},{k:"schema",l:"N° schema elettrico",code:1},{k:"appar",l:"N° Apparecchiatura",code:1}]},
-  {id:"sorgente", t:"Sorgente laser", campi:[
-    {k:"modello",l:"Modello"},{k:"serial",l:"Serial Number",code:1},{k:"ip",l:"Indirizzo IP",code:1},
-    {k:"lan",l:"Collegato a",type:"lan"},{k:"fibra",l:"Note fibra ottica"}]},
-  {id:"chiller", t:"Chiller", campi:[
-    {k:"modello",l:"Modello"},{k:"cfg",l:"CFG code",code:1},{k:"order",l:"Order",code:1}]},
-  {id:"filtro", t:"Filtro aspiratore", campi:[
-    {k:"modello",l:"Modello"},{k:"serial",l:"Serial Number",code:1},
-    {k:"atex",l:"Atex",type:"sel",opts:["","Sì","No"]},{k:"serranda",l:"Serranda Auto.",type:"sel",opts:["","Sì","No"]},{k:"note",l:"Note",full:1}]},
-  {id:"ev", t:"Elettrovalvola proporzionale", campi:[
-    {k:"fornitore",l:"Fornitore"},{k:"matricola",l:"Matricola n°",code:1},{k:"modello",l:"Modello"}]},
-  {id:"testa", t:"Testa di taglio", campi:[
-    {k:"fornitore",l:"Fornitore"},{k:"matricola",l:"Matricola n°",code:1},{k:"modello",l:"Modello"},
-    {k:"ugelli",l:"Ugelli"},{k:"ceramico",l:"Ceramico"},{k:"vetrini",l:"Vetrini"}]},
-];
-
-// Checklist. voce = stringa | {desc, sel:[...], oscurabile:true}
-const CHECKLIST = [
-  {id:"prelim", t:"Operazioni preliminari", voci:[
-    "Verifica Distinta Macchina","Controllo fasi di alimentazione","Chiusura fusibili e verifica tensioni",
-    "Jumper analogica a 10 V","Nodo schede ausiliarie","Impostazione timer reset sicurezze","Collegamento aria",
-    "Pressostato aria a 7 bar","Pressostato prop. enable a 6,5 bar","Pressostati ausiliari a 2 bar",
-    "Messa in bolla macchina","Impostazioni pompette grasso","Impostazioni LAN (indirizzo IP)"]},
-  {id:"sw", t:"Installazione software", voci:[
-    "Autosetup CN","Installazione software sorgente","Installazione software telecamera (IP)","Installazione software Notepad++"]},
-  {id:"startup", t:"Startup sorgente laser", voci:["Collegamento sorgente-CN (indirizzo IP)"]},
-  {id:"fibra", t:"Collegamento fibra ottica-testa", voci:[
-    "Fibra ottica in asse testa","Rotazione connettore (0/90/180/270)","Controllo collegamenti acqua"]},
-  {id:"movim", t:"Prima movimentazione", perAsse:true, voci:[
-    "Verifica senso rotazione","Accoppiamento (meccanico)","Velocità dal CN / fattore conversione",
-    "Taratura / finecorsa asse reale","Inversioni / finecorsa asse virtuale"]},
-  {id:"eb80", t:"Valvole EB80", perGruppo:["M1","M2","Basamento"], voci:[
-    "Indirizzamento isola EB80","Test elettrovalvole","Verifica tenuta / pressione"]},
-  {id:"mandrino", t:"Mandrino", perGruppo:["M1","M2"], voci:[
-    "Taratura potenziometri","Allineamenti meccanici"]},
-  {id:"cnparam", t:"Parametri CN per sorgente laser", voci:[
-    "Potenza nominale sorgente", {desc:"Parametri PWM", sel:["non combined","combined"]}]},
-  {id:"testa", t:"Taratura testa", voci:[
-    "Quote calibrazione testa", {desc:"Impostazione centralina Precitec", oscurabile:true},
-    "Controllo altezza sensore capacitivo","Centraggio nozzle","Test di sparo con frequenza 1 Hz",
-    "Inserimento parametri sparo","Ricerca saldatura"]},
-  {id:"i40", t:"Industria 4.0", voci:["Installazione programma e verifica funzionamento con telecamera"]},
-  {id:"finitura", t:"Finitura", voci:[
-    "Numeri valvole e targhette","Backup su server","Pulizia quadro elettrico","Condizionatore quadro elettrico",
-    "Viti pipette EV","Copiare DB_laser e salvarlo come DB_Usr","Controllo traduzioni e lingua"]},
-  {id:"sicurezza", t:"Sistemi di sicurezza", voci:[
-    "Fotocellule (singole + logica interventi)","Taratura caduta pezzo","Luci / spie","Elettro serratura porta",
-    "Elettro serratura banco mobile","Controllo semaforo","Emergenza pulpito"]},
-];
-
-const MATERIALI = ["","Ferro (O2)","Ferro (N2)","Inox","Alluminio","Altro"];
-const GAS = ["","O2","N2","Aria"];
-const ESITI_SEL = ["","OK","KO","N.A."];
-
-/* ====== STATO ====== */
-const DEFAULT_ASSI = ["U","C1","C2","X","Z","Y","RC1","RC2","RC3","RC4","SC","RS1","RS2","RS3","RS4"];
-let state = loadState();
-
-function freshState(){
-  return { testata:{norma:"CE"}, assi:[...DEFAULT_ASSI], drive:{}, motore:{}, comp:{}, telecamere:[{}],
-           valori:{}, prove:[{foto:[]}], prove_extra:{}, note:"" };
-}
-function loadState(){
-  try{ const s=JSON.parse(localStorage.getItem(LS_KEY)); if(s && s.assi){ s.telecamere=s.telecamere||[{}]; s.prove=s.prove||[{foto:[]}]; return s; } }catch(e){}
-  return freshState();
-}
-let saveTimer=null;
-function persist(){
-  try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); markSaved(); }
-  catch(e){ const el=document.getElementById("saveState"); el.textContent="⚠ memoria piena: salva il .json"; el.classList.add("dirty"); }
-}
-function scheduleSave(){ markDirty(); clearTimeout(saveTimer); saveTimer=setTimeout(persist,500); }
-function markDirty(){ const e=document.getElementById("saveState"); e.textContent="● modifiche…"; e.classList.add("dirty"); }
-function markSaved(){ const e=document.getElementById("saveState"); e.textContent="✓ salvato nel browser"; e.classList.remove("dirty"); }
-
-function getVal(p){ return p.split(".").reduce((o,k)=> (o==null?undefined:o[k]), state); }
-function setVal(p,v){ const ks=p.split("."); let o=state; for(let i=0;i<ks.length-1;i++){ if(o[ks[i]]==null)o[ks[i]]={}; o=o[ks[i]]; } o[ks[ks.length-1]]=v; }
-
-/* ====== UTIL ====== */
-function el(html){ const t=document.createElement("template"); t.innerHTML=html.trim(); return t.content.firstChild; }
-function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
-function san(s){ return String(s||"").trim().replace(/[^\w.\-]+/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,""); }
-function autosize(t){ if(!t||t.tagName!=="TEXTAREA")return; t.style.height="auto"; t.style.height=(t.scrollHeight)+"px"; }
-function autosizeAll(){ document.querySelectorAll("textarea.grow").forEach(autosize); }
-
-/* costruisce un campo (label + input/textarea/select) */
-function inputEl(path, o){
-  o=o||{}; let e;
-  if(o.type==="sel"||o.type==="lan"){
-    const opts = o.type==="lan"?LAN:o.opts;
-    e=document.createElement("select"); e.dataset.path=path;
-    opts.forEach(op=>{ const x=document.createElement("option"); x.value=op; x.textContent=op||"—"; e.appendChild(x); });
-    e.value=getVal(path)||"";
-  } else {
-    e=document.createElement("textarea"); e.className="grow"+(o.code?" code":""); e.rows=1; e.dataset.path=path;
-    e.value=getVal(path)||""; if(o.placeholder)e.placeholder=o.placeholder;
-  }
-  return e;
-}
-function fieldEl(path, f){
-  const fld=el(`<div class="field"${f.full?' style="grid-column:1/-1"':''}><label>${esc(f.l)}</label></div>`);
-  fld.appendChild(inputEl(path, {code:f.code, type:f.type, opts:f.opts}));
-  return fld;
-}
-
-/* ====== RENDER: ASSI ====== */
-function renderAxes(){
-  const box=document.getElementById("axisChips"); box.innerHTML="";
-  state.assi.forEach(a=> box.appendChild(el(`<span class="chip">${esc(a)}<button title="Rimuovi" data-del-axis="${esc(a)}">×</button></span>`)));
-  document.getElementById("numAssi").value = state.assi.length;
-}
-
-/* ====== RENDER: COMPONENTI ====== */
-function renderComponenti(){
-  const body=document.getElementById("componentiBody"); body.innerHTML="";
-  COMPONENTI.forEach(c=>{
-    const blk=el(`<div class="comp"><h3>${esc(c.t)}</h3><div class="grid c3"></div></div>`);
-    const g=blk.querySelector(".grid");
-    c.campi.forEach(f=> g.appendChild(fieldEl(`comp.${c.id}.${f.k}`, f)));
-    if(c.secondari){
-      const sec = (getVal(`comp.${c.id}.secondari`)||[]);
-      const wrap=el(`<div style="grid-column:1/-1"><label style="font-size:12.5px;font-weight:600;color:var(--ink-soft)">Indirizzi secondari</label></div>`);
-      sec.forEach((v,i)=>{
-        const row=el(`<div class="sub-add"></div>`);
-        const inp=inputEl(`comp.${c.id}.secondari.${i}`, {code:1, placeholder:"Indirizzo IP secondario"}); inp.style.maxWidth="320px";
-        row.appendChild(inp);
-        row.appendChild(el(`<button class="mini-del no-print" data-del-secondario="${i}">Rimuovi</button>`));
-        wrap.appendChild(row);
-      });
-      wrap.appendChild(el(`<button class="btn btn-accent no-print" data-add-secondario style="margin-top:8px">+ Indirizzo secondario</button>`));
-      g.appendChild(wrap);
-    }
-    body.appendChild(blk);
-  });
-
-  // Telecamere (ripetibili)
-  const tcBlk=el(`<div class="comp"><h3>Telecamere <span class="tag">${state.telecamere.length}</span></h3></div>`);
-  state.telecamere.forEach((t,i)=>{
-    const row=el(`<div class="axis-row"><strong>Telecamera ${i+1}</strong><div class="grid c4" style="margin-top:6px"></div></div>`);
-    const g=row.querySelector(".grid");
-    g.appendChild(fieldEl(`telecamere.${i}.modello`, {l:"Modello"}));
-    g.appendChild(fieldEl(`telecamere.${i}.serie`, {l:"N° serie", code:1}));
-    g.appendChild(fieldEl(`telecamere.${i}.ip`, {l:"Indirizzo IP", code:1}));
-    g.appendChild(fieldEl(`telecamere.${i}.lan`, {l:"Collegato a", type:"lan"}));
-    if(state.telecamere.length>1) row.appendChild(el(`<button class="mini-del no-print" data-del-tc="${i}" style="margin-top:6px">Rimuovi telecamera</button>`));
-    tcBlk.appendChild(row);
-  });
-  tcBlk.appendChild(el(`<button class="btn btn-accent no-print" id="btnAddTc" style="margin-top:6px">+ Aggiungi telecamera</button>`));
-  body.appendChild(tcBlk);
-
-  // Drive per asse
-  const drv=el(`<div class="comp"><h3>Drive per asse <span class="tag">${state.assi.length} assi</span></h3></div>`);
-  state.assi.forEach(a=>{
-    const row=el(`<div class="axis-row"><strong>Asse ${esc(a)}</strong><div class="grid c4" style="margin-top:6px"></div></div>`);
-    const g=row.querySelector(".grid");
-    [["modello","Modello"],["fw","Firmware",1],["serie","N° serie",1],["codice","Code ord.",1]].forEach(([k,l,code])=>
-      g.appendChild(fieldEl(`drive.${a}.${k}`, {l,code})));
-    drv.appendChild(row);
-  });
-  body.appendChild(drv);
-
-  // Motori per asse (cavo motore + cavo encoder separati)
-  const mot=el(`<div class="comp"><h3>Motori per asse <span class="tag">${state.assi.length} assi</span></h3></div>`);
-  state.assi.forEach(a=>{
-    const row=el(`<div class="axis-row"><strong>Asse ${esc(a)}</strong><div class="grid c3" style="margin-top:6px"></div></div>`);
-    const g=row.querySelector(".grid");
-    [["modello","Modello"],["serie","N° serie",1],["codice","Code ord.",1],["cavoMot","Cavo motore",1],["cavoEnc","Cavo encoder",1]].forEach(([k,l,code])=>
-      g.appendChild(fieldEl(`motore.${a}.${k}`, {l,code})));
-    mot.appendChild(row);
-  });
-  body.appendChild(mot);
-}
-
-/* ====== RENDER: CHECKLIST ====== */
-function renderChecklist(){
-  const body=document.getElementById("checklistBody"); body.innerHTML="";
-  CHECKLIST.forEach(sec=>{
-    const blk=el(`<div class="sec-group"><h3>${esc(sec.t)}</h3></div>`);
-    if(sec.perAsse){
-      state.assi.forEach(a=>{
-        const sub=el(`<div class="axis-sub"><h4>Asse ${esc(a)}</h4></div>`);
-        sec.voci.forEach((v,i)=> sub.appendChild(buildCheck(`${sec.id}.${a}.${i}`, v)));
-        blk.appendChild(sub);
-      });
-    } else if(sec.perGruppo){
-      sec.perGruppo.forEach(grp=>{
-        const sub=el(`<div class="axis-sub"><h4>${esc(grp)}</h4></div>`);
-        sec.voci.forEach((v,i)=> sub.appendChild(buildCheck(`${sec.id}.${grp}.${i}`, v)));
-        blk.appendChild(sub);
-      });
-    } else {
-      sec.voci.forEach((v,i)=> blk.appendChild(buildCheck(`${sec.id}.${i}`, v)));
-    }
-    body.appendChild(blk);
-  });
-  updateProgress();
-}
-function buildCheck(key, voce){
-  const desc = typeof voce==="string" ? voce : voce.desc;
-  const v = state.valori[key] || {};
-  const off = !!v.off;
-  const row=el(`<div class="check${off?' off':''}" data-key="${key}">
-    <div class="desc">${esc(desc)}${typeof voce==="object"&&voce.oscurabile?
-      `<label class="na-toggle no-print"><input type="checkbox" data-off="${key}" ${off?'checked':''}> non presente</label>`:""}</div>
-    <div class="field"><label>Esito</label>
-      <div class="esito" role="group">
-        <button type="button" data-v="OK" aria-pressed="${v.esito==="OK"}" ${off?'disabled':''}>OK</button>
-        <button type="button" data-v="KO" aria-pressed="${v.esito==="KO"}" ${off?'disabled':''}>KO</button>
-        <button type="button" data-v="NA" aria-pressed="${v.esito==="NA"}" ${off?'disabled':''}>N.A.</button>
-      </div>
-    </div>
-    <div class="field"><label>Tecnico</label><textarea class="grow" rows="1" data-vk="${key}" data-vf="tecnico" ${off?'disabled':''}>${esc(v.tecnico||"")}</textarea></div>
-    <div class="field"><label>Valore / note</label><textarea class="grow code" rows="1" data-vk="${key}" data-vf="note" ${off?'disabled':''}>${esc(v.note||"")}</textarea></div>
-  </div>`);
-  if(typeof voce==="object" && voce.sel){
-    const f=el(`<div class="field"><label>Opzione</label></div>`);
-    const s=document.createElement("select"); s.className="opt"; s.dataset.vk=key; s.dataset.vf="opt";
-    ["",...voce.sel].forEach(o=>{ const x=document.createElement("option"); x.value=o; x.textContent=o||"—"; s.appendChild(x); });
-    s.value=v.opt||""; f.appendChild(s);
-    row.insertBefore(f, row.children[2]);
-  }
-  return row;
-}
-function setEsito(key,v){
-  if(!state.valori[key]) state.valori[key]={};
-  if(state.valori[key].off) return;
-  state.valori[key].esito = (state.valori[key].esito===v)?"":v;
-  document.querySelectorAll(`.check[data-key="${CSS.escape(key)}"] .esito button`).forEach(b=>
-    b.setAttribute("aria-pressed", String(state.valori[key].esito===b.dataset.v)));
-  updateProgress(); scheduleSave();
-}
-function countChecks(){
-  let total=0, done=0;
-  CHECKLIST.forEach(sec=>{
-    const mult = sec.perAsse?state.assi.length : (sec.perGruppo?sec.perGruppo.length:1);
-    total += sec.voci.length*mult;
-  });
-  Object.values(state.valori).forEach(v=>{ if(v && (v.esito||v.off)) done++; });
-  return {total,done};
-}
-function updateProgress(){
-  const {total,done}=countChecks();
-  const p=document.getElementById("prog-check");
-  p.textContent=`${done}/${total}`; p.classList.toggle("done", total>0&&done>=total);
-}
-
-/* ====== RENDER: PROVE + FOTO ====== */
-function renderProve(){
-  const body=document.getElementById("proveBody"); body.innerHTML="";
-  if(!state.prove.length) state.prove=[{foto:[]}];
-  state.prove.forEach((p,i)=>{
-    p.foto = p.foto||[];
-    const card=el(`<div class="prova" data-i="${i}">
-      <div class="prova-head"><span class="pn">Prova ${i+1}</span>
-        <button class="row-del no-print" data-del-prova="${i}">Elimina prova</button></div>
-      <div class="grid c3"></div>
-    </div>`);
-    const g=card.querySelector(".grid");
-    g.appendChild(fieldSelect(`Materiale`, MATERIALI, p.materiale, i, "materiale"));
-    g.appendChild(fieldText(`Spessore`, p.spessore, i, "spessore", "mm", 1));
-    g.appendChild(fieldSelect(`Gas`, GAS, p.gas, i, "gas"));
-    g.appendChild(fieldText(`Geometria tubo`, p.geometria, i, "geometria", "es. tondo Ø40, quadro 40×40", 0));
-    g.appendChild(fieldSelect(`Esito`, ESITI_SEL, p.esito, i, "esito"));
-    g.appendChild(fieldText(`Note`, p.note, i, "note", "", 0));
-    // galleria foto
-    const gal=el(`<div class="foto-gal"></div>`);
-    p.foto.forEach((f,j)=>{
-      gal.appendChild(el(`<div class="foto-item"><img src="${f.data}" alt="${esc(f.name)}"><button class="fdel no-print" data-del-foto="${i}:${j}" title="Elimina foto">×</button><div class="fn">${esc(f.name)}</div></div>`));
-    });
-    card.appendChild(gal);
-    const add=el(`<div class="add-row no-print">
-      <button class="btn btn-accent" data-add-foto="${i}">📷 Aggiungi foto</button>
-      <input type="file" accept="image/*" capture="environment" multiple hidden data-foto-input="${i}">
-    </div>`);
-    card.appendChild(add);
-    body.appendChild(card);
-  });
-  renderAllegato();
-}
-function fieldText(label, val, i, f, ph, code){
-  const fld=el(`<div class="field"><label>${esc(label)}</label></div>`);
-  const t=document.createElement("textarea"); t.className="grow"+(code?" code":""); t.rows=1;
-  t.dataset.pi=i; t.dataset.pf=f; t.value=val||""; if(ph)t.placeholder=ph;
-  fld.appendChild(t); return fld;
-}
-function fieldSelect(label, opts, val, i, f){
-  const fld=el(`<div class="field"><label>${esc(label)}</label></div>`);
-  const s=document.createElement("select"); s.dataset.piSel="1"; s.dataset.pf=f;
-  opts.forEach(o=>{ const x=document.createElement("option"); x.value=o; x.textContent=o||"—"; if(o===val)x.selected=true; s.appendChild(x); });
-  fld.appendChild(s); return fld;
-}
-
-/* compressione immagine + nome automatico */
-function processImage(file, cb){
-  const img=new Image(); const url=URL.createObjectURL(file);
-  img.onload=()=>{
-    const max=1280; let w=img.width, h=img.height;
-    if(w>max||h>max){ const s=Math.min(max/w, max/h); w=Math.round(w*s); h=Math.round(h*s); }
-    const c=document.createElement("canvas"); c.width=w; c.height=h;
-    c.getContext("2d").drawImage(img,0,0,w,h);
-    URL.revokeObjectURL(url);
-    cb(c.toDataURL("image/jpeg",0.7));
-  };
-  img.onerror=()=>{ URL.revokeObjectURL(url); cb(null); };
-  img.src=url;
-}
-function nomeFoto(p, seq){
-  const matr = san(getVal("testata.matricola")||"collaudo");
-  const mat = san(p.materiale||"mat");
-  const sp = san(p.spessore||"sp");
-  return `${matr}_${mat}_${sp}mm_${seq}.jpg`;
-}
-function handlePhotos(i, files){
-  const p=state.prove[i]; p.foto=p.foto||[];
-  let pending=files.length;
-  Array.from(files).forEach(file=>{
-    processImage(file, (data)=>{
-      if(data){
-        const seq=p.foto.length+1;
-        const name=nomeFoto(p, seq);
-        p.foto.push({name, data});
-      }
-      if(--pending===0){ renderProve(); autosizeAll(); scheduleSave(); }
-    });
-  });
-}
-
-/* ====== ALLEGATO FOTOGRAFICO (render per il PDF) ====== */
-function renderAllegato(){
-  const body=document.getElementById("allegatoBody"); body.innerHTML="";
-  let any=false;
-  state.prove.forEach((p,i)=>{
-    if(!(p.foto&&p.foto.length)) return; any=true;
-    const sp = p.spessore?` ${esc(p.spessore)} mm`:"";
-    const grp=el(`<div class="alleg-grp"><h4>Prova ${i+1} — ${esc(p.materiale||"")}${sp} ${esc(p.geometria||"")}</h4><div class="alleg-gal"></div></div>`);
-    const g=grp.querySelector(".alleg-gal");
-    p.foto.forEach(f=> g.appendChild(el(`<figure class="alleg-item"><img src="${f.data}" alt=""><figcaption>${esc(f.name)}</figcaption></figure>`)));
-    body.appendChild(grp);
-  });
-  if(!any) body.appendChild(el(`<p class="hint">Nessuna foto allegata.</p>`));
-}
-
-/* ====== ZIP (store, senza dipendenze) ====== */
-let CRC_T;
-function crc32(u){
-  if(!CRC_T){ CRC_T=[]; for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; CRC_T[n]=c>>>0; } }
-  let crc=0^(-1); for(let i=0;i<u.length;i++) crc=(crc>>>8)^CRC_T[(crc^u[i])&0xFF]; return (crc^(-1))>>>0;
-}
-function dataUrlToBytes(d){ const b=atob(d.split(",")[1]); const u=new Uint8Array(b.length); for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i); return u; }
-function zipStore(files){ // files: [{name, bytes}]
-  const enc=new TextEncoder(); const parts=[]; const central=[]; let offset=0;
-  for(const f of files){
-    const name=enc.encode(f.name), data=f.bytes, crc=crc32(data), n=name.length, sz=data.length;
-    const h=new DataView(new ArrayBuffer(30));
-    h.setUint32(0,0x04034b50,true); h.setUint16(4,20,true); h.setUint16(6,0,true); h.setUint16(8,0,true);
-    h.setUint16(10,0,true); h.setUint16(12,0,true); h.setUint32(14,crc,true); h.setUint32(18,sz,true); h.setUint32(22,sz,true);
-    h.setUint16(26,n,true); h.setUint16(28,0,true);
-    parts.push(new Uint8Array(h.buffer), name, data);
-    const c=new DataView(new ArrayBuffer(46));
-    c.setUint32(0,0x02014b50,true); c.setUint16(4,20,true); c.setUint16(6,20,true); c.setUint16(8,0,true); c.setUint16(10,0,true);
-    c.setUint16(12,0,true); c.setUint16(14,0,true); c.setUint32(16,crc,true); c.setUint32(20,sz,true); c.setUint32(24,sz,true);
-    c.setUint16(28,n,true); c.setUint16(30,0,true); c.setUint16(32,0,true); c.setUint16(34,0,true); c.setUint16(36,0,true);
-    c.setUint32(38,0,true); c.setUint32(42,offset,true);
-    central.push(new Uint8Array(c.buffer), name);
-    offset += 30 + n + sz;
-  }
-  let cdSize=0; central.forEach(p=>cdSize+=p.length);
-  const e=new DataView(new ArrayBuffer(22));
-  e.setUint32(0,0x06054b50,true); e.setUint16(4,0,true); e.setUint16(6,0,true);
-  e.setUint16(8,files.length,true); e.setUint16(10,files.length,true);
-  e.setUint32(12,cdSize,true); e.setUint32(16,offset,true); e.setUint16(20,0,true);
-  return new Blob([...parts, ...central, new Uint8Array(e.buffer)], {type:"application/zip"});
-}
-
-/* ====== SALVATAGGIO FILE (condivisione iOS o download) ====== */
-async function saveBlob(blob, name, mime){
-  try{
-    const file=new File([blob], name, {type:mime||blob.type});
-    if(navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file], title:name});
-      return;
-    }
-  }catch(e){ if(e && e.name==="AbortError") return; }
-  const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=name; a.click();
-  setTimeout(()=>URL.revokeObjectURL(url), 4000);
-}
-
-/* ====== HYDRATE + PRINT HEAD ====== */
-function hydratePaths(){
-  document.querySelectorAll("[data-path]").forEach(inp=>{ const v=getVal(inp.dataset.path); if(v!=null) inp.value=v; });
-}
-function updatePrintHead(){
-  const t=state.testata||{};
-  document.getElementById("phTitle").textContent=`Collaudo ${t.modello||"Laser"} — matr. ${t.matricola||"—"}`;
-  document.getElementById("phMeta").innerHTML=
-    `Commessa: ${esc(t.commessa||"—")} · Cliente: ${esc(t.cliente||"—")} · Assi: ${state.assi.length} · `+
-    `Compilato da: ${esc(t.compilatore||"—")}<br>Inizio: ${esc(t.inizio||"—")} · Fine: ${esc(t.fine||"—")} · Rev: ${esc(t.revisione||"—")}`;
-}
-
-/* ====== EVENTI ====== */
-document.addEventListener("input", e=>{
-  const t=e.target;
-  if(t.dataset.path!==undefined){ setVal(t.dataset.path, t.value); if(t.dataset.path.startsWith("testata")) updatePrintHead(); scheduleSave(); }
-  else if(t.dataset.vk!==undefined){ const k=t.dataset.vk; if(!state.valori[k])state.valori[k]={}; state.valori[k][t.dataset.vf]=t.value; scheduleSave(); }
-  else if(t.dataset.pi!==undefined){ const i=+t.dataset.pi; if(!state.prove[i])state.prove[i]={foto:[]}; state.prove[i][t.dataset.pf]=t.value; scheduleSave(); }
-  if(t.classList && t.classList.contains("grow")) autosize(t);
-});
-document.addEventListener("change", e=>{
-  const t=e.target;
-  if(t.dataset.piSel!==undefined){ const i=+t.closest(".prova").dataset.i; if(!state.prove[i])state.prove[i]={foto:[]}; state.prove[i][t.dataset.pf]=t.value; scheduleSave(); }
-  else if(t.dataset.vk!==undefined && t.classList.contains("opt")){ const k=t.dataset.vk; if(!state.valori[k])state.valori[k]={}; state.valori[k].opt=t.value; scheduleSave(); }
-  else if(t.dataset.off!==undefined){ const k=t.dataset.off; if(!state.valori[k])state.valori[k]={}; state.valori[k].off=t.checked; renderChecklist(); autosizeAll(); scheduleSave(); }
-  else if(t.dataset.fotoInput!==undefined && t.files.length){ handlePhotos(+t.dataset.fotoInput, t.files); t.value=""; }
-});
-document.addEventListener("click", e=>{
-  const t=e.target;
-  if(t.closest && t.closest(".esito") && t.dataset.v){ setEsito(t.closest(".check").dataset.key, t.dataset.v); }
-  else if(t.dataset.delAxis!==undefined){
-    const a=t.dataset.delAxis;
-    if(confirm(`Rimuovere l'asse ${a}? Si perdono i dati drive/motore/movimentazione di quell'asse.`)){
-      state.assi=state.assi.filter(x=>x!==a); delete state.drive[a]; delete state.motore[a];
-      Object.keys(state.valori).forEach(k=>{ if(k.startsWith(`movim.${a}.`)) delete state.valori[k]; });
-      renderAxes(); renderComponenti(); renderChecklist(); autosizeAll(); scheduleSave();
-    }
-  }
-  else if(t.dataset.addSecondario!==undefined){ const arr=getVal("comp.pannello.secondari")||[]; arr.push(""); setVal("comp.pannello.secondari",arr); renderComponenti(); autosizeAll(); scheduleSave(); }
-  else if(t.dataset.delSecondario!==undefined){ const arr=getVal("comp.pannello.secondari")||[]; arr.splice(+t.dataset.delSecondario,1); setVal("comp.pannello.secondari",arr); renderComponenti(); autosizeAll(); scheduleSave(); }
-  else if(t.id==="btnAddTc"){ state.telecamere.push({}); renderComponenti(); autosizeAll(); scheduleSave(); }
-  else if(t.dataset.delTc!==undefined){ state.telecamere.splice(+t.dataset.delTc,1); if(!state.telecamere.length)state.telecamere=[{}]; renderComponenti(); autosizeAll(); scheduleSave(); }
-  else if(t.dataset.delProva!==undefined){ state.prove.splice(+t.dataset.delProva,1); renderProve(); autosizeAll(); scheduleSave(); }
-  else if(t.dataset.addFoto!==undefined){ document.querySelector(`[data-foto-input="${t.dataset.addFoto}"]`).click(); }
-  else if(t.dataset.delFoto!==undefined){ const [i,j]=t.dataset.delFoto.split(":").map(Number); state.prove[i].foto.splice(j,1); renderProve(); autosizeAll(); scheduleSave(); }
-});
-
-document.getElementById("btnAddAxis").addEventListener("click", ()=>{
-  const inp=document.getElementById("newAxis"); const a=inp.value.trim(); if(!a)return;
-  if(state.assi.includes(a)){ alert("Asse già presente."); return; }
-  state.assi.push(a); inp.value=""; renderAxes(); renderComponenti(); renderChecklist(); autosizeAll(); scheduleSave();
-});
-document.getElementById("newAxis").addEventListener("keydown", e=>{ if(e.key==="Enter") document.getElementById("btnAddAxis").click(); });
-document.getElementById("btnAddProva").addEventListener("click", ()=>{ state.prove.push({foto:[]}); renderProve(); autosizeAll(); scheduleSave(); });
-document.getElementById("btnPdf").addEventListener("click", ()=>{ updatePrintHead(); window.print(); });
-
-document.getElementById("btnSalva").addEventListener("click", ()=>{
-  persist();
-  const t=state.testata||{};
-  const name=`collaudo_${san(t.modello||"laser")}_${san(t.matricola||"matr")}.json`;
-  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
-  saveBlob(blob, name, "application/json");
-});
-document.getElementById("btnZip").addEventListener("click", ()=>{
-  const files=[];
-  state.prove.forEach((p,i)=> (p.foto||[]).forEach(f=> files.push({name:`prova-${i+1}/${f.name}`, bytes:dataUrlToBytes(f.data)})));
-  if(!files.length){ alert("Nessuna foto da archiviare."); return; }
-  const blob=zipStore(files); const t=state.testata||{};
-  const name=`collaudo_${san(t.matricola||"matr")}_foto.zip`;
-  saveBlob(blob, name, "application/zip");
-});
-document.getElementById("btnCarica").addEventListener("click", ()=> document.getElementById("fileInput").click());
-document.getElementById("fileInput").addEventListener("change", e=>{
-  const f=e.target.files[0]; if(!f)return; const r=new FileReader();
-  r.onload=()=>{ try{ const s=JSON.parse(r.result); if(!s.assi){alert("File non valido: manca la configurazione assi."); return;}
-    state=s; state.telecamere=state.telecamere||[{}]; state.prove=state.prove||[{foto:[]}];
-    renderAll(); persist(); alert("Collaudo caricato.");
-  }catch(err){ alert("Errore nella lettura del file JSON."); } };
-  r.readAsText(f); e.target.value="";
-});
-document.getElementById("btnNuovo").addEventListener("click", ()=>{
-  if(confirm("Iniziare un nuovo collaudo vuoto? I dati non salvati su file andranno persi.")){ state=freshState(); renderAll(); persist(); }
-});
-
-/* ====== AVVIO ====== */
-function renderAll(){
-  renderAxes(); renderComponenti(); renderChecklist(); renderProve(); renderAllegato();
-  hydratePaths(); autosizeAll(); updatePrintHead();
-}
-renderAll(); markSaved();
-
-/* tasto "torna su": compare dopo aver scrollato */
-const toTop=document.getElementById("toTop");
-function toggleToTop(){ toTop.hidden = window.scrollY < 500; }
-window.addEventListener("scroll", toggleToTop, {passive:true});
-toTop.addEventListener("click", ()=> window.scrollTo({top:0, behavior:"smooth"}));
-toggleToTop();
-
-window.addEventListener("beforeunload", persist);
-window.addEventListener("beforeprint", autosizeAll);
-</script>
 </body>
 </html>
