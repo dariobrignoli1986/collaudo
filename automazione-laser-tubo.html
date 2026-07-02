@@ -121,7 +121,7 @@
   .add-axis{display:flex; gap:var(--s1); max-width:380px}
   .add-axis input{flex:1; font:inherit; padding:9px 10px; border:1px solid var(--line-strong); border-radius:6px; min-height:44px}
 
-  /* ---- Prove di taglio (card) ---- */
+  /* ---- Prove di carico (card) ---- */
   .prova{border:1px solid var(--line); border-radius:var(--radius); padding:var(--s2); margin-bottom:var(--s2)}
   .prova-head{display:flex; align-items:center; gap:var(--s1); margin-bottom:var(--s2)}
   .prova-head .pn{font:700 13px/1 var(--mono); background:var(--accent); color:#fff; padding:6px 9px; border-radius:5px}
@@ -358,17 +358,23 @@
     <div class="card-body" id="checklistBody"></div>
   </section>
 
-  <!-- 5. PROVE DI TAGLIO -->
+  <!-- 5. PROVE DI CARICO -->
   <section class="card locked" id="sec-prove">
-    <h2><span class="num">5</span> Prove di taglio</h2>
+    <h2><span class="num">5</span> Prove di carico</h2>
     <p class="gate-msg"><span class="lk">🔒</span> <span>Completa l'<strong>Anagrafica componenti</strong> (sezione 3) per sbloccare le prove.</span></p>
     <div class="card-body">
-      <p class="hint">Una scheda per prova. Da telefono puoi scattare le foto del taglio: vengono rinominate coi dati della prova e un numero progressivo.</p>
+      <div class="grid c2" style="margin-bottom:var(--s3)">
+        <div class="field"><label>Tipo di carico</label>
+          <select data-path="prove_extra.tipo_carico">
+            <option value="">—</option>
+            <option value="Carico da Fascio">Carico da Fascio</option>
+            <option value="Carico da Catena">Carico da Catena</option>
+          </select>
+        </div>
+      </div>
+      <p class="hint">Una scheda per prova di carico. Da telefono puoi scattare le foto del carico: vengono rinominate coi dati della prova e un numero progressivo.</p>
       <div id="proveBody"></div>
       <button class="btn btn-accent add-row no-print" id="btnAddProva">+ Aggiungi prova</button>
-      <div class="grid c2" style="margin-top:var(--s3)">
-        <div class="field"><label>Controllo temperature (da app)</label><textarea class="grow" rows="1" data-path="prove_extra.temperature"></textarea></div>
-      </div>
     </div>
   </section>
 
@@ -441,19 +447,6 @@ const COMPONENTI = [
     {k:"plc",l:"Versione PLC User",code:1},{k:"iso",l:"Versione ISO User",code:1},{k:"ambiente",l:"Ambiente"}]},
   {id:"quadro", t:"Quadro elettrico", campi:[
     {k:"fornitore",l:"Fornitore"},{k:"schema",l:"N° schema elettrico",code:1},{k:"appar",l:"N° Apparecchiatura",code:1}]},
-  {id:"sorgente", t:"Sorgente laser", campi:[
-    {k:"modello",l:"Modello"},{k:"serial",l:"Serial Number",code:1},{k:"ip",l:"Indirizzo IP",code:1},
-    {k:"lan",l:"Collegato a",type:"lan"},{k:"fibra",l:"Note fibra ottica"}]},
-  {id:"chiller", t:"Chiller", campi:[
-    {k:"modello",l:"Modello"},{k:"cfg",l:"CFG code",code:1},{k:"order",l:"Order",code:1}]},
-  {id:"filtro", t:"Filtro aspiratore", campi:[
-    {k:"modello",l:"Modello"},{k:"serial",l:"Serial Number",code:1},
-    {k:"atex",l:"Atex",type:"sel",opts:["","Sì","No"]},{k:"serranda",l:"Serranda Auto.",type:"sel",opts:["","Sì","No"]},{k:"note",l:"Note",full:1}]},
-  {id:"ev", t:"Elettrovalvola proporzionale", campi:[
-    {k:"fornitore",l:"Fornitore"},{k:"matricola",l:"Matricola n°",code:1},{k:"modello",l:"Modello"}]},
-  {id:"testa", t:"Testa di taglio", campi:[
-    {k:"fornitore",l:"Fornitore"},{k:"matricola",l:"Matricola n°",code:1},{k:"modello",l:"Modello"},
-    {k:"ugelli",l:"Ugelli"},{k:"ceramico",l:"Ceramico"},{k:"vetrini",l:"Vetrini"}]},
 ];
 
 // Checklist. voce = stringa | {desc, sel:[...], oscurabile, noNote, extra:[{k,l,code}]}
@@ -469,6 +462,9 @@ const CHECKLIST = [
     "Pressostato aria a 7 bar","Messa in bolla macchina","Impostazioni pompette grasso","Impostazioni LAN (indirizzo IP)"]},
   {id:"sw", t:"Installazione software", voci:[
     "Autosetup CN"]},
+  {id:"testio", t:"Test I/O", voci:[
+    "Test ingressi (I) — sensori, finecorsa, pulsanti, sicurezze",
+    "Test uscite (O) — elettrovalvole, spie, attuatori"]},
   {id:"movim", t:"Prima movimentazione", perAsse:true, voci:[
     "Verifica senso rotazione","Accoppiamento (meccanico)","Velocità dal CN / fattore conversione",
     "Taratura / finecorsa asse reale","Inversioni / finecorsa asse virtuale"]},
@@ -481,8 +477,7 @@ const CHECKLIST = [
     "Fotocellule (singole + logica interventi)","Luci / spie","Controllo semaforo","Emergenza pulpito"]},
 ];
 
-const MATERIALI = ["","Ferro (O2)","Ferro (N2)","Inox","Alluminio","Altro"];
-const GAS = ["","O2","N2","Aria"];
+const PROFILI = ["","Tondo","Quadro","Rettangolare","Altro"];
 const ESITI_SEL = ["","OK","KO","N.A."];
 
 /* ====== STATO ====== */
@@ -570,21 +565,6 @@ function renderComponenti(){
     }
     body.appendChild(blk);
   });
-
-  // Telecamere (ripetibili)
-  const tcBlk=el(`<div class="comp"><h3>Telecamere <span class="tag">${state.telecamere.length}</span></h3></div>`);
-  state.telecamere.forEach((t,i)=>{
-    const row=el(`<div class="axis-row"><strong>Telecamera ${i+1}</strong><div class="grid c4" style="margin-top:6px"></div></div>`);
-    const g=row.querySelector(".grid");
-    g.appendChild(fieldEl(`telecamere.${i}.modello`, {l:"Modello"}));
-    g.appendChild(fieldEl(`telecamere.${i}.serie`, {l:"N° serie", code:1}));
-    g.appendChild(fieldEl(`telecamere.${i}.ip`, {l:"Indirizzo IP", code:1}));
-    g.appendChild(fieldEl(`telecamere.${i}.lan`, {l:"Collegato a", type:"lan"}));
-    if(state.telecamere.length>1) row.appendChild(el(`<button class="mini-del no-print" data-del-tc="${i}" style="margin-top:6px">Rimuovi telecamera</button>`));
-    tcBlk.appendChild(row);
-  });
-  tcBlk.appendChild(el(`<button class="btn btn-accent no-print" id="btnAddTc" style="margin-top:6px">+ Aggiungi telecamera</button>`));
-  body.appendChild(tcBlk);
 
   // Drive per asse
   const drv=el(`<div class="comp"><h3>Drive per asse <span class="tag">${state.assi.length} assi</span></h3></div>`);
@@ -773,10 +753,11 @@ function renderProve(){
       <div class="grid c3"></div>
     </div>`);
     const g=card.querySelector(".grid");
-    g.appendChild(fieldSelect(`Materiale`, MATERIALI, p.materiale, i, "materiale"));
+    g.appendChild(fieldSelect(`Profilo`, PROFILI, p.profilo, i, "profilo"));
+    g.appendChild(fieldText(`Dimensione / Ø`, p.dimensione, i, "dimensione", "es. Ø40, 40×40", 0));
     g.appendChild(fieldText(`Spessore`, p.spessore, i, "spessore", "mm", 1));
-    g.appendChild(fieldSelect(`Gas`, GAS, p.gas, i, "gas"));
-    g.appendChild(fieldText(`Geometria tubo`, p.geometria, i, "geometria", "es. tondo Ø40, quadro 40×40", 0));
+    g.appendChild(fieldText(`Lunghezza`, p.lunghezza, i, "lunghezza", "mm", 1));
+    g.appendChild(fieldText(`Peso`, p.peso, i, "peso", "kg", 1));
     g.appendChild(fieldSelect(`Esito`, ESITI_SEL, p.esito, i, "esito"));
     g.appendChild(fieldText(`Note`, p.note, i, "note", "", 0));
     // galleria foto
@@ -823,9 +804,9 @@ function processImage(file, cb){
 }
 function nomeFoto(p, seq){
   const matr = san(getVal("testata.matricola")||"collaudo");
-  const mat = san(p.materiale||"mat");
-  const sp = san(p.spessore||"sp");
-  return `${matr}_${mat}_${sp}mm_${seq}.jpg`;
+  const prof = san(p.profilo||"prof");
+  const dim = san(p.dimensione||"dim");
+  return `${matr}_${prof}_${dim}_${seq}.jpg`;
 }
 function handlePhotos(i, files){
   const p=state.prove[i]; p.foto=p.foto||[];
@@ -849,7 +830,7 @@ function renderAllegato(){
   state.prove.forEach((p,i)=>{
     if(!(p.foto&&p.foto.length)) return; any=true;
     const sp = p.spessore?` ${esc(p.spessore)} mm`:"";
-    const grp=el(`<div class="alleg-grp"><h4>Prova ${i+1} — ${esc(p.materiale||"")}${sp} ${esc(p.geometria||"")}</h4><div class="alleg-gal"></div></div>`);
+    const grp=el(`<div class="alleg-grp"><h4>Prova ${i+1} — ${esc(p.profilo||"")}${sp} ${esc(p.dimensione||"")}</h4><div class="alleg-gal"></div></div>`);
     const g=grp.querySelector(".alleg-gal");
     p.foto.forEach(f=> g.appendChild(el(`<figure class="alleg-item"><img src="${f.data}" alt=""><figcaption>${esc(f.name)}</figcaption></figure>`)));
     body.appendChild(grp);
@@ -1017,10 +998,10 @@ function exportCsv(){
     }
   });
   L.push("");
-  L.push("PROVE DI TAGLIO");
-  L.push(csvRow(["N","Materiale","Spessore (mm)","Gas","Geometria","Esito","Note","Foto"]));
-  state.prove.forEach((p,i)=> L.push(csvRow([i+1, p.materiale, p.spessore, p.gas, p.geometria, p.esito, p.note, (p.foto||[]).length])));
-  if(state.prove_extra && state.prove_extra.temperature){ L.push(""); L.push(csvRow(["Controllo temperature", state.prove_extra.temperature])); }
+  L.push("PROVE DI CARICO");
+  L.push(csvRow(["N","Profilo","Dimensione","Spessore (mm)","Lunghezza (mm)","Peso (kg)","Esito","Note","Foto"]));
+  state.prove.forEach((p,i)=> L.push(csvRow([i+1, p.profilo, p.dimensione, p.spessore, p.lunghezza, p.peso, p.esito, p.note, (p.foto||[]).length])));
+  if(state.prove_extra && state.prove_extra.tipo_carico){ L.push(""); L.push(csvRow(["Tipo di carico", state.prove_extra.tipo_carico])); }
   if(state.note){ L.push(""); L.push(csvRow(["Note di collaudo", state.note])); }
   const csv="\ufeff"+L.join("\r\n");
   const blob=new Blob([csv], {type:"text/csv;charset=utf-8"});  // BOM iniziale = accenti corretti in Excel
