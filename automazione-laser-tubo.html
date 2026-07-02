@@ -274,7 +274,7 @@
   <div class="toolbar-in"><svg class="wlogo" viewBox="0 0 760 245"><use href="#wlogo"/></svg>
     <div class="tb-right">
       <div class="tb-titlerow">
-        <h1>Collaudo Automazione Laser Tubo <span>· Warcom · V0.1 (bozza)</span></h1>
+        <h1>Collaudo Automazione Laser Tubo <span>· Warcom · V1.1</span></h1>
         <span class="save-state" id="saveState">—</span>
       </div>
       <div class="tb-actions">
@@ -313,10 +313,25 @@
         <div class="field"><label>Macchina tipo e modello</label><textarea class="grow" rows="1" data-path="testata.modello" placeholder="es. FIBERTUBE ITALO 60-200"></textarea></div>
         <div class="field"><label>Numero commessa</label><textarea class="grow code" rows="1" data-path="testata.commessa"></textarea></div>
         <div class="field"><label>Matricola</label><textarea class="grow code" rows="1" data-path="testata.matricola"></textarea></div>
+        <div class="field"><label>SN macchina Italo associata</label><textarea class="grow code" rows="1" data-path="testata.sn_italo"></textarea></div>
         <div class="field"><label>Cliente</label><textarea class="grow" rows="1" data-path="testata.cliente"></textarea></div>
         <div class="field"><label>Numero assi (auto)</label><input id="numAssi" readonly style="background:#f6f8fa"></div>
         <div class="field"><label>Rif. Norma</label><textarea class="grow" rows="1" data-path="testata.norma"></textarea></div>
         <div class="field"><label>Lingua</label><textarea class="grow" rows="1" data-path="testata.lingua" placeholder="es. ITA/SPA"></textarea></div>
+        <div class="field"><label>Tipo caricatore</label>
+          <select data-path="testata.tipo_caricatore">
+            <option value="">—</option>
+            <option value="Caricatore da fascio">Caricatore da fascio</option>
+            <option value="Caricatore a catena">Caricatore a catena</option>
+          </select>
+        </div>
+        <div class="field" id="fldLunghCaricatore" hidden><label>Lunghezza caricatore da fascio</label>
+          <select data-path="testata.lunghezza_caricatore">
+            <option value="">—</option>
+            <option value="Solo 6 metri">Solo 6 metri</option>
+            <option value="Da 3 a 6 metri">Da 3 a 6 metri</option>
+          </select>
+        </div>
         <div class="grid c2" style="grid-column:1/-1">
           <div class="field"><label>Inizio collaudo</label><input type="date" data-path="testata.inizio"></div>
           <div class="field"><label>Fine collaudo</label><input type="date" data-path="testata.fine"></div>
@@ -437,9 +452,6 @@ window.lockHash = s => { const h=pwHash(s); console.log("Impronta di «"+s+"» �
 const LAN = ["","LAN1","LAN2"];
 
 const COMPONENTI = [
-  {id:"pannello", t:"Pannello operatore", secondari:true, campi:[
-    {k:"modello",l:"Modello"},{k:"serie",l:"N° di serie",code:1},{k:"codice",l:"Code ordinazione",code:1},
-    {k:"lan1",l:"Indirizzo LAN1",code:1},{k:"lan2",l:"Indirizzo LAN2",code:1},{k:"subnet",l:"Subnet Mask",code:1}]},
   {id:"rack", t:"Rack CN Esa", campi:[
     {k:"modello",l:"Modello"},{k:"serie",l:"N° di serie",code:1},{k:"codice",l:"Code ordinazione",code:1},
     {k:"ip",l:"Indirizzo IP",code:1},{k:"lan",l:"Collegato a",type:"lan"}]},
@@ -466,15 +478,39 @@ const CHECKLIST = [
     "Test ingressi (I) — sensori, finecorsa, pulsanti, sicurezze",
     "Test uscite (O) — elettrovalvole, spie, attuatori"]},
   {id:"movim", t:"Prima movimentazione", perAsse:true, voci:[
-    "Verifica senso rotazione","Accoppiamento (meccanico)","Velocità dal CN / fattore conversione",
-    "Taratura / finecorsa asse reale","Inversioni / finecorsa asse virtuale"]},
+    "Verifica senso rotazione","Accoppiamento (meccanico)","Velocità dal CN","Fattore di conversione",
+    "Taratura asse reale","Finecorsa asse reale","Inversioni asse virtuale","Finecorsa asse virtuale",
+    "Prova massima velocità"]},
   {id:"eb80", t:"Valvole EB80", perGruppo:["EB80_1","EB80_2"], voci:[
     "Indirizzamento isola EB80","Test elettrovalvole","Verifica tenuta / pressione"]},
   {id:"finitura", t:"Finitura", voci:[
     "Numeri valvole e targhette","Backup su server","Pulizia quadro elettrico","Condizionatore quadro elettrico",
     "Viti pipette EV","Controllo traduzioni e lingua"]},
   {id:"sicurezza", t:"Sistemi di sicurezza", voci:[
-    "Fotocellule (singole + logica interventi)","Luci / spie","Controllo semaforo","Emergenza pulpito"]},
+    "Fotocellule (singole + logica interventi)","Luci / spie","Controllo semaforo","Emergenza pulpito",
+    "Prova emergenze (arresto effettivo e ripristino)"]},
+  {id:"sicurcaric", t:"Sicurezze specifiche caricatore", voci:[
+    "Fotocellule / barriere zona di carico",
+    "Riparo mobile caricatore",
+    "Emergenza dedicata caricatore",
+    "Anti-caduta barre"]},
+  {id:"caricatore", t:"Misurazione tubo", voci:[
+    "Taratura sensore di misurazione lunghezza tubo"]},
+  {id:"ciclo", t:"Ciclo e interfaccia col laser", voci:[
+    "Prova ciclo di carico automatico completo (prelievo barra → traslazione → inserimento nel mandrino)",
+    "Sincronizzazione / handshake con la macchina laser (richiesta barra, barra pronta, consenso ciclo, allarmi incrociati)",
+    "Singolarizzazione barre (una barra per volta, nessun doppio prelievo)",
+    "Centraggio / allineamento barra col mandrino",
+    "Tempo ciclo di carico (misura)",
+    "Prova di autonomia (N cicli ripetuti senza intervento)"]},
+  {id:"commerciali", t:"Verifica dati commerciali rispetto al carico", voci:[
+    "Lunghezza minima caricabile (dati commerciali)",
+    "Lunghezza massima caricabile (dati commerciali)",
+    "Dimensione minima caricabile (dati commerciali)",
+    "Dimensione massima caricabile (dati commerciali)"]},
+  {id:"consegna", t:"Documentazione e consegna", voci:[
+    "Verifica targa CE e marcatura dati macchina",
+    "Consegna documentazione e manuale d'uso"]},
 ];
 
 const PROFILI = ["","Tondo","Quadro","Rettangolare","Altro"];
@@ -711,11 +747,25 @@ function updateProgress(){
   p.textContent=`${done}/${total}`; p.classList.toggle("done", total>0&&done>=total);
 }
 
+/* La lunghezza caricatore serve solo per il "Caricatore da fascio": la mostra/nasconde e la azzera se a catena */
+function isCaricatoreFascio(){ return (getVal("testata.tipo_caricatore")||"")==="Caricatore da fascio"; }
+function updateCaricatore(){
+  const fascio=isCaricatoreFascio();
+  const fld=document.getElementById("fldLunghCaricatore");
+  if(fld) fld.hidden=!fascio;
+  if(!fascio && (getVal("testata.lunghezza_caricatore")||"")!==""){
+    setVal("testata.lunghezza_caricatore","");
+    const sel=document.querySelector('[data-path="testata.lunghezza_caricatore"]'); if(sel) sel.value="";
+  }
+}
+
 /* ====== GATING A CASCATA (1→2→3→4/5) ====== */
-// Sezione 1 completa = tutti i campi testata tranne "Fine collaudo"
+// Sezione 1 completa = tutti i campi testata tranne "Fine collaudo" (la lunghezza caricatore solo se da fascio)
 function testataComplete(){
+  const fascio=isCaricatoreFascio();
   return [...document.querySelectorAll('#sec-testata [data-path]')]
     .filter(i=> i.dataset.path!=="testata.fine")
+    .filter(i=> i.dataset.path!=="testata.lunghezza_caricatore" || fascio)
     .every(i=> (getVal(i.dataset.path)||"").toString().trim()!=="");
 }
 // Sezione 3 completa = tutti i campi componenti tranne le note (fibra/note/indirizzi secondari esclusi)
@@ -757,7 +807,7 @@ function renderProve(){
     g.appendChild(fieldText(`Dimensione / Ø`, p.dimensione, i, "dimensione", "es. Ø40, 40×40", 0));
     g.appendChild(fieldText(`Spessore`, p.spessore, i, "spessore", "mm", 1));
     g.appendChild(fieldText(`Lunghezza`, p.lunghezza, i, "lunghezza", "mm", 1));
-    g.appendChild(fieldText(`Peso`, p.peso, i, "peso", "kg", 1));
+    g.appendChild(fieldText(`Numero barre sul caricatore`, p.barre, i, "barre", "", 1));
     g.appendChild(fieldSelect(`Esito`, ESITI_SEL, p.esito, i, "esito"));
     g.appendChild(fieldText(`Note`, p.note, i, "note", "", 0));
     // galleria foto
@@ -904,7 +954,9 @@ const REQUIRED = [
   {path:"testata.modello",     l:"Macchina tipo e modello"},
   {path:"testata.commessa",    l:"Numero commessa"},
   {path:"testata.matricola",   l:"Matricola"},
+  {path:"testata.sn_italo",    l:"SN macchina Italo associata"},
   {path:"testata.cliente",     l:"Cliente"},
+  {path:"testata.tipo_caricatore", l:"Tipo caricatore"},
   {path:"testata.norma",       l:"Rif. Norma"},
   {path:"testata.lingua",      l:"Lingua"},
   {path:"testata.inizio",      l:"Inizio collaudo"},
@@ -999,8 +1051,8 @@ function exportCsv(){
   });
   L.push("");
   L.push("PROVE DI CARICO");
-  L.push(csvRow(["N","Profilo","Dimensione","Spessore (mm)","Lunghezza (mm)","Peso (kg)","Esito","Note","Foto"]));
-  state.prove.forEach((p,i)=> L.push(csvRow([i+1, p.profilo, p.dimensione, p.spessore, p.lunghezza, p.peso, p.esito, p.note, (p.foto||[]).length])));
+  L.push(csvRow(["N","Profilo","Dimensione","Spessore (mm)","Lunghezza (mm)","N° barre sul caricatore","Esito","Note","Foto"]));
+  state.prove.forEach((p,i)=> L.push(csvRow([i+1, p.profilo, p.dimensione, p.spessore, p.lunghezza, p.barre, p.esito, p.note, (p.foto||[]).length])));
   if(state.prove_extra && state.prove_extra.tipo_carico){ L.push(""); L.push(csvRow(["Tipo di carico", state.prove_extra.tipo_carico])); }
   if(state.note){ L.push(""); L.push(csvRow(["Note di collaudo", state.note])); }
   const csv="\ufeff"+L.join("\r\n");
@@ -1012,7 +1064,7 @@ function exportCsv(){
 document.addEventListener("input", e=>{
   const t=e.target;
   if(t.classList && t.classList.contains("invalid")) t.classList.remove("invalid");
-  if(t.dataset.path!==undefined){ setVal(t.dataset.path, t.value); if(t.dataset.path.startsWith("testata")) updatePrintHead(); updateGates(); scheduleSave(); }
+  if(t.dataset.path!==undefined){ setVal(t.dataset.path, t.value); if(t.dataset.path.startsWith("testata")){ updatePrintHead(); if(t.dataset.path==="testata.tipo_caricatore") updateCaricatore(); } updateGates(); scheduleSave(); }
   else if(t.dataset.vk!==undefined){
     const k=t.dataset.vk; if(!state.valori[k])state.valori[k]={};
     if(t.dataset.ve!==undefined){ if(!state.valori[k].extra)state.valori[k].extra={}; state.valori[k].extra[t.dataset.ve]=t.value; }
@@ -1114,7 +1166,7 @@ document.getElementById("btnNuovo").addEventListener("click", ()=>{
 /* ====== AVVIO ====== */
 function renderAll(){
   renderAxes(); renderComponenti(); renderChecklist(); renderProve(); renderAllegato();
-  hydratePaths(); autosizeAll(); updatePrintHead(); updateGates();
+  hydratePaths(); updateCaricatore(); autosizeAll(); updatePrintHead(); updateGates();
 }
 renderAll(); markSaved();
 
