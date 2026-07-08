@@ -116,7 +116,20 @@
   section.card.locked{display:none}
   .gate-msg{display:none}
   .axes-confirm{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:var(--s3); padding-top:var(--s2); border-top:1px dashed var(--line)}
-  .axes-confirm .ok{color:var(--ok); font-weight:700; font-size:13px}
+  .axes-confirm .ok{display:inline-flex; align-items:center; gap:8px; color:var(--muted); font-weight:600; font-size:13px;
+    background:var(--na-bg); border:1px solid var(--line-strong); border-radius:999px; padding:9px 16px}
+  .axes-confirm.confirmed .hint{display:none}
+  /* Assi NON confermati = lavoro da fare, quindi giallino (come i campi vuoti).
+     Una volta confermati, la sezione torna neutra come tutte le altre. */
+  body.todo-on #sec-assi:not(.assi-ok) > h2{background:var(--todo); border-bottom-color:var(--todo-line)}
+  body.todo-on #sec-assi:not(.assi-ok) > h2 .num{background:var(--todo-line); color:var(--ink)}
+  body.todo-on .axes-confirm:not(.confirmed){background:var(--todo); border:1px solid var(--todo-line);
+    border-radius:var(--radius); padding:14px; margin-top:var(--s3)}
+  @media print{
+    #sec-assi > h2{background:#f6f8fa; border-bottom-color:var(--line)}
+    #sec-assi > h2 .num{background:var(--accent); color:#fff}
+    .axes-confirm{background:none; border:none}
+  }
 
   .axis-sub{border-left:3px solid var(--line-strong); padding-left:var(--s2); margin:var(--s1) 0 var(--s3)}
   .axis-sub > h4{margin:var(--s2) 0 0; font:700 14px/1.2 var(--mono); color:var(--accent-ink)}
@@ -286,7 +299,7 @@
   <div class="toolbar-in"><svg class="wlogo" viewBox="0 0 760 245"><use href="#wlogo"/></svg>
     <div class="tb-right">
       <div class="tb-titlerow">
-        <h1>Collaudo Italo <span>· Warcom · V1.3</span></h1>
+        <h1>Collaudo Italo <span>· Warcom · V1.4</span></h1>
         <span class="save-state" id="saveState">—</span>
       </div>
       <div class="tb-actions">
@@ -392,7 +405,7 @@
   </section>
 
   <!-- 6. NOTE -->
-  <section class="card locked" id="sec-note">
+  <section class="card" id="sec-note">
     <h2><span class="num">6</span> Note di collaudo</h2>
     <p class="gate-msg"><span class="lk">🔒</span> <span>Completa l'<strong>Anagrafica componenti</strong> (sezione 3) per sbloccare.</span></p>
     <div class="card-body">
@@ -826,9 +839,14 @@ function updateGates(){
   const {s1,s2,s3}=gateState();
   document.getElementById("sec-assi").classList.toggle("locked", !s1);
   document.getElementById("sec-componenti").classList.toggle("locked", !s2);
-  ["sec-checklist","sec-prove","sec-note"].forEach(id=> document.getElementById(id).classList.toggle("locked", !s3));
-  const cs=document.getElementById("axesConfirmState"); if(cs) cs.hidden=!state.assiConfirmed;
-  const cb=document.getElementById("btnConfirmAxes"); if(cb) cb.textContent = state.assiConfirmed ? "Assi confermati ✓" : "✓ Conferma assi";
+  ["sec-checklist","sec-prove"].forEach(id=> document.getElementById(id).classList.toggle("locked", !s3));
+  // NB: "sec-note" NON e' qui: le note di collaudo restano sempre aperte, da inizio collaudo.
+  const conf=!!state.assiConfirmed;
+  const cs=document.getElementById("axesConfirmState");
+  if(cs){ cs.hidden=!conf; cs.textContent=`✓ Assi confermati — ${state.assi.length} assi`; }
+  const cb=document.getElementById("btnConfirmAxes"); if(cb) cb.hidden=conf;   // a conferma fatta il bottone sparisce
+  const aw=document.querySelector(".axes-confirm"); if(aw) aw.classList.toggle("confirmed", conf);
+  const sa=document.getElementById("sec-assi"); if(sa) sa.classList.toggle("assi-ok", conf);
 }
 
 /* ====== RENDER: PROVE + FOTO ====== */
@@ -994,6 +1012,7 @@ function refreshTodo(){
   document.querySelectorAll(".todo").forEach(e=>e.classList.remove("todo"));
   document.querySelectorAll(".todo-row").forEach(e=>e.classList.remove("todo-row"));
   const btn=document.getElementById("btnTodo"); if(btn) btn.setAttribute("aria-pressed", String(todoOn));
+  document.body.classList.toggle("todo-on", todoOn);   // governa anche il giallo della sezione assi
   if(!todoOn) return;
   // campi di testo/selezione vuoti (esclusi: note, disabilitati, righe "non presente")
   document.querySelectorAll("[data-path],[data-vk],[data-pi],[data-pi-sel]").forEach(el=>{
