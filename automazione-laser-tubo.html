@@ -11,6 +11,7 @@
     --accent:#1f4e79; --accent-ink:#0f3354;
     --ok:#15803d; --ok-bg:#e7f4ec; --ko:#b91c1c; --ko-bg:#fbe9e9;
     --na:#5b6775; --na-bg:#eceff2; --warn:#b45309;
+    --todo:#fff8d1; --todo-line:#dcbb43;
     --sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
     --mono: ui-monospace, "Cascadia Mono", "Consolas", "SF Mono", monospace;
     --s1:8px; --s2:16px; --s3:24px; --s4:40px; --radius:8px;
@@ -39,6 +40,7 @@
   .btn-primary{background:var(--accent); color:#fff; border-color:var(--accent)}
   .btn-primary:hover{background:var(--accent-ink)}
   .btn-accent{background:var(--accent); color:#fff; border-color:var(--accent)}
+  .btn[aria-pressed="false"]{opacity:.5}
   .save-state{font-size:12px; opacity:.9; white-space:nowrap}
   .save-state.dirty{opacity:1; font-weight:600}
 
@@ -64,6 +66,8 @@
   textarea.grow{resize:none; overflow:hidden; min-height:44px; line-height:1.4}
   .field .code{font-family:var(--mono); font-size:13px}
   .field input:focus, .field textarea:focus, .field select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(31,78,121,.18)}
+  /* campi ancora da compilare: giallo pastello. Dichiarato PRIMA di .invalid: il rosso vince sul giallo. */
+  .field input.todo, .field textarea.todo, .field select.todo{background:var(--todo); border-color:var(--todo-line)}
   .field input.invalid, .field textarea.invalid, .field select.invalid{border-color:var(--ko); box-shadow:0 0 0 3px rgba(185,28,28,.18)}
 
   /* ---- Component blocks ---- */
@@ -96,10 +100,18 @@
   .check-extra{grid-column:1/-1; margin-top:6px; padding-top:8px; border-top:1px dashed var(--line)}
   .check-extra label{font-size:11.5px}
   .dyn-add{flex:1; min-width:220px; font:inherit; padding:9px 10px; border:1px solid var(--line-strong); border-radius:6px; min-height:44px}
+  /* riga di checklist senza esito: giallo pastello (prima di .invalid-row, così il rosso vince) */
+  .check.todo-row{background:var(--todo); box-shadow:inset 4px 0 0 var(--todo-line); border-radius:6px}
+  .esito.todo button:not([aria-pressed="true"]){background:var(--todo); border-color:var(--todo-line)}
   /* righe/campi che bloccano la stampa PDF: evidenziati in rosso */
   .check.invalid-row{background:var(--ko-bg); box-shadow:inset 4px 0 0 var(--ko); border-radius:6px}
   .esito.invalid{outline:2px solid var(--ko); outline-offset:3px; border-radius:8px}
-  @media print{ .check.invalid-row{background:none; box-shadow:none} }
+  /* il giallo è un aiuto a video: il PDF esce pulito */
+  @media print{
+    .check.invalid-row{background:none; box-shadow:none}
+    .check.todo-row{background:none; box-shadow:none}
+    .todo{background:none !important; border-color:var(--line-strong) !important}
+  }
   /* ---- Gating sezioni (wizard a cascata): sezione bloccata = non visibile ---- */
   section.card.locked{display:none}
   .gate-msg{display:none}
@@ -274,7 +286,7 @@
   <div class="toolbar-in"><svg class="wlogo" viewBox="0 0 760 245"><use href="#wlogo"/></svg>
     <div class="tb-right">
       <div class="tb-titlerow">
-        <h1>Collaudo Automazione Laser Tubo <span>· Warcom · V1.1</span></h1>
+        <h1>Collaudo Automazione Laser Tubo <span>· Warcom · V1.2</span></h1>
         <span class="save-state" id="saveState">—</span>
       </div>
       <div class="tb-actions">
@@ -283,6 +295,7 @@
         <button class="btn" id="btnSalva">💾 Salva .json</button>
         <button class="btn" id="btnZip">🗜 Foto .zip</button>
         <button class="btn" id="btnCsv">📊 CSV</button>
+        <button class="btn" id="btnTodo" aria-pressed="true" title="Evidenzia in giallo i campi ancora da compilare (le note sono sempre libere)">👁 Da compilare</button>
         <button class="btn btn-primary" id="btnPdf">🖨 Genera PDF</button>
         <input type="file" id="fileInput" accept=".json,application/json" hidden>
       </div>
@@ -937,6 +950,40 @@ async function saveBlob(blob, name, mime){
 function hydratePaths(){
   document.querySelectorAll("[data-path]").forEach(inp=>{ const v=getVal(inp.dataset.path); if(v!=null) inp.value=v; });
 }
+/* ====== EVIDENZIA CAMPI DA COMPILARE (giallo pastello) ======
+   Ogni campo vuoto si accende di giallo e si spegne appena lo compili.
+   REGOLA: i campi NOTE restano sempre liberi — non vengono mai evidenziati.
+   Il giallo è solo a video: in stampa/PDF sparisce (vedi @media print). */
+const TODO_KEY = LS_KEY + ":todo";
+let todoOn = true;
+try{ todoOn = localStorage.getItem(TODO_KEY) !== "0"; }catch(e){}
+
+/* campi liberi: note (testata, checklist, prove), note fibra, indirizzi secondari */
+function isFreeField(el){
+  const p = el.dataset.path;
+  if(p!==undefined) return /(^|\.)note$/.test(p) || /\.fibra$/.test(p) || p.includes(".secondari.");
+  return el.dataset.vf==="note" || el.dataset.pf==="note";
+}
+function refreshTodo(){
+  document.querySelectorAll(".todo").forEach(e=>e.classList.remove("todo"));
+  document.querySelectorAll(".todo-row").forEach(e=>e.classList.remove("todo-row"));
+  const btn=document.getElementById("btnTodo"); if(btn) btn.setAttribute("aria-pressed", String(todoOn));
+  if(!todoOn) return;
+  // campi di testo/selezione vuoti (esclusi: note, disabilitati, righe "non presente")
+  document.querySelectorAll("[data-path],[data-vk],[data-pi],[data-pi-sel]").forEach(el=>{
+    if(!/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.disabled) return;
+    if(el.closest(".check.off")) return;
+    if(isFreeField(el)) return;
+    if(!String(el.value||"").trim()) el.classList.add("todo");
+  });
+  // righe di checklist senza esito (NA e "non presente" contano come compilate)
+  document.querySelectorAll(".check").forEach(row=>{
+    if(row.classList.contains("off")) return;
+    const es=row.querySelector(".esito");
+    if(es && !es.querySelector('button[aria-pressed="true"]')){ row.classList.add("todo-row"); es.classList.add("todo"); }
+  });
+}
+
 function updatePrintHead(){
   const t=state.testata||{};
   document.getElementById("phTitle").textContent=`Collaudo ${t.modello||"Laser"} — matr. ${t.matricola||"—"}`;
@@ -1074,6 +1121,7 @@ document.addEventListener("input", e=>{
   }
   else if(t.dataset.pi!==undefined){ const i=+t.dataset.pi; if(!state.prove[i])state.prove[i]={foto:[]}; state.prove[i][t.dataset.pf]=t.value; scheduleSave(); }
   if(t.classList && t.classList.contains("grow")) autosize(t);
+  refreshTodo();
 });
 document.addEventListener("change", e=>{
   const t=e.target;
@@ -1081,9 +1129,11 @@ document.addEventListener("change", e=>{
   else if(t.dataset.vk!==undefined && t.classList.contains("opt")){ const k=t.dataset.vk; if(!state.valori[k])state.valori[k]={}; state.valori[k].opt=t.value; scheduleSave(); }
   else if(t.dataset.off!==undefined){ const k=t.dataset.off; if(!state.valori[k])state.valori[k]={}; state.valori[k].off=t.checked; renderChecklist(); autosizeAll(); scheduleSave(); }
   else if(t.dataset.fotoInput!==undefined && t.files.length){ handlePhotos(+t.dataset.fotoInput, t.files); t.value=""; }
+  refreshTodo();
 });
 document.addEventListener("click", e=>{
   const t=e.target;
+  if(t.id==="btnTodo"){ todoOn=!todoOn; try{ localStorage.setItem(TODO_KEY, todoOn?"1":"0"); }catch(err){} refreshTodo(); return; }
   if(t.closest && t.closest(".esito") && t.dataset.v){ setEsito(t.closest(".check").dataset.key, t.dataset.v); }
   else if(t.dataset.delAxis!==undefined){
     const a=t.dataset.delAxis;
@@ -1166,8 +1216,10 @@ document.getElementById("btnNuovo").addEventListener("click", ()=>{
 /* ====== AVVIO ====== */
 function renderAll(){
   renderAxes(); renderComponenti(); renderChecklist(); renderProve(); renderAllegato();
-  hydratePaths(); updateCaricatore(); autosizeAll(); updatePrintHead(); updateGates();
+  hydratePaths(); updateCaricatore(); autosizeAll(); updatePrintHead(); updateGates(); refreshTodo();
 }
+/* registrato per ultimo: gira dopo gli altri handler di click (aggiunta/rimozione righe, esiti) */
+document.addEventListener("click", refreshTodo);
 renderAll(); markSaved();
 
 /* tasto "torna su": compare dopo aver scrollato */
