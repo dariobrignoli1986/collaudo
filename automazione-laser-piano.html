@@ -195,7 +195,7 @@
 
   /* ---- PRINT (PDF) ---- */
   @media print{
-    @page{ size:A4; margin:12mm 10mm; }
+    @page{ size:A4; margin:9mm 9mm; }
     body{background:#fff; font-size:10px}
     .toolbar, .no-print, .esito button[aria-pressed="false"], .row-del, .fdel, .add-row, .add-axis, .sub-add, .chip button, .hint, .lead, .na-toggle{display:none !important}
     .wrap{max-width:none; padding:0}
@@ -216,10 +216,13 @@
     .field label{color:#444; font-size:8px; font-weight:600}
     .comp{break-inside:avoid; border:1px solid #bbb; padding:6px 8px; margin-bottom:6px}
     .comp > h3{font-size:11px; margin-bottom:5px}
-    .check{break-inside:avoid; padding:3px 0; grid-template-columns:1fr; gap:3px; align-items:end}
+    /* stampa compatta: descrizione a tutta riga, poi FAT e SAT AFFIANCATI (meno pagine) */
+    .check{break-inside:avoid; padding:2px 0; grid-template-columns:1fr 1fr; gap:1px 10px; align-items:start}
     .check.off{display:none}
-    .fase-block{grid-template-columns:118px 1fr 1.5fr; gap:8px; padding:1px 4px; border-left:2px solid #ccc}
+    .check .desc{grid-column:1/-1; font-size:10px}
+    .fase-block{grid-template-columns:58px 1fr 1.3fr; gap:6px; padding:0 4px; border-left:2px solid #ccc}
     .fase-block.sat{border-left-color:#b79ccb}
+    .fase-block .field label{font-size:7.5px}
     .esito button{border:1.5px solid #333; min-height:0; padding:2px 8px; font-size:10px; flex:none; border-radius:3px}
     .check select.opt{border:none; border-bottom:1px solid #bbb; min-height:0; padding:1px 0; font-size:10px}
     .axis-sub{margin:2px 0 8px} .axis-sub > h4{font-size:11px; margin-top:6px}
@@ -319,7 +322,7 @@
   <div class="toolbar-in"><svg class="wlogo" viewBox="0 0 760 245"><use href="#wlogo"/></svg>
     <div class="tb-right">
       <div class="tb-titlerow">
-        <h1>Collaudo Automazione Laser Piano <span>· Warcom · V0.9 (bozza)</span></h1>
+        <h1>Collaudo Automazione Laser Piano <span>· Warcom · V0.10 (bozza)</span></h1>
         <span class="fase-sw" role="group" title="Quale campagna stai compilando: FAT in officina, SAT dal cliente">
           <button type="button" data-fase-sw="FAT" aria-pressed="true">FAT officina</button>
           <button type="button" data-fase-sw="SAT" aria-pressed="false">SAT cliente</button>
@@ -368,6 +371,12 @@
         <div class="field"><label>Numero assi (auto)</label><input id="numAssi" readonly style="background:#f6f8fa"></div>
         <div class="field"><label>Rif. Norma</label><textarea class="grow" rows="1" data-path="testata.norma"></textarea></div>
         <div class="field"><label>Lingua</label><textarea class="grow" rows="1" data-path="testata.lingua" placeholder="es. ITA/SPA"></textarea></div>
+        <div class="field"><label>Tipo impianto</label>
+          <span class="fase-sw" role="group" aria-label="Tipo impianto: Carico-Scarico oppure Magazzino">
+            <button type="button" data-tipo-sw="carico-scarico" aria-pressed="true">Carico-Scarico</button>
+            <button type="button" data-tipo-sw="magazzino" aria-pressed="false">Magazzino</button>
+          </span>
+        </div>
       </div>
 
       <!-- Due campagne distinte: FAT in officina, SAT dal cliente -->
@@ -542,12 +551,23 @@ const CHECKLIST = [
     "Configurazione generale impianto da HMI",
     "Verifica testi allarmi HMI",
     {desc:"Verifica testi multilingua HMI", oscurabile:true}]},
+  {id:"sicurezza", t:"Sistemi di sicurezza", voci:[
+    "Test E-STOP 1 — quadro elettrico",
+    "Test E-STOP 2 — pulpito P1",
+    "Test E-STOP 3 — pulpito P2",
+    {desc:"Test E-STOP laser", oscurabile:true},
+    "Test cancello accesso 1",
+    "Test cancello accesso 2",
+    "Prova emergenze (arresto effettivo e ripristino)"]},
+  {id:"sicurauto", t:"Sicurezze specifiche automazione", voci:[
+    "Barriere / recinzione zona magazzino","Fotocellule zona carico/scarico","Riparo mobile",
+    "Emergenza dedicata automazione","Anti-caduta pila fogli"]},
   {id:"testio", t:"Test I/O", voci:[
     "Test I/O quadro",
     "Test I/O in campo"]},
   {id:"movim", t:"Prima movimentazione", perAsse:true, voci:[
-    "Verifica senso rotazione","Accoppiamento (meccanico)","Velocità dal CN","Fattore di conversione",
-    "Taratura asse reale","Finecorsa asse reale","Inversioni asse virtuale","Finecorsa asse virtuale",
+    "Verifica senso rotazione","Accoppiamento (meccanico)","Fattore di conversione",
+    "Taratura asse reale","Finecorsa asse reale",
     "Prova massima velocità"]},
   {id:"ventman", t:"Ventose — test manuali da HMI", voci:[
     "Comando Z ventose da HMI (motori scollegati)",
@@ -603,6 +623,52 @@ const CHECKLIST = [
     "Test sfogliatura + spazzola",
     "Verifica assorbimento corrente — ventose con peso massimo",
     "Verifica assorbimento corrente — forche con peso massimo"]},
+  {id:"traselev", t:"Traslatore / Elevatore — test manuali da HMI", soloMagazzino:true, voci:[
+    "Comando traslatore da HMI (motori scollegati)",
+    "Comando traslatore da HMI (motori collegati)",
+    "Comando elevatore da HMI (motori scollegati)",
+    "Comando elevatore da HMI (motori collegati)"]},
+  {id:"magreg", t:"Magazzino — regolazioni / configurazione pesa", soloMagazzino:true, voci:[
+    "Configurazione pesa",
+    "Test peso su singola cella di carico",
+    "Taratura con peso campione",
+    "Regolazione FTC presenza cassetto",
+    "Regolazione sensori traslatore",
+    "Regolazione FTC presenza cassetto torre",
+    "Verifica PX fuori ingombro elevatore",
+    "Regolazione extracorsa alto elevatore",
+    "Regolazione extracorsa basso elevatore",
+    "Regolazione PX catena elevatore",
+    "Regolazione PX home elevatore",
+    "Regolazione sagoma eccessiva su carico",
+    "Regolazione FTC allocamenti",
+    "Azzeramento encoder",
+    "Quote cassetti",
+    "Quote traslatore"]},
+  {id:"magauto", t:"Magazzino — test automatico", soloMagazzino:true, voci:[
+    "Procedura da carico a magazzino",
+    "Procedura da magazzino a carico",
+    "Procedura da elevatore a magazzino",
+    "Procedura da magazzino a elevatore",
+    "Test procedure con tutti i cassetti",
+    "Esegui test con peso massimo",
+    "Ottimizzazione velocità impianto",
+    "Test sagoma eccessiva su carico",
+    "Test peso eccessivo su carico",
+    "Verifica assorbimento corrente elevatore con peso massimo",
+    "Procedura da magazzino a finiti",
+    "Procedura da finiti a magazzino",
+    "Procedura da magazzino a grezzi",
+    "Procedura da grezzi a magazzino",
+    "Procedura di carico lamiera",
+    "Procedura di scarico lamiera",
+    "Procedura di scarico-carico lamiera",
+    "Procedura di scarico lamiera da forche",
+    "Carico lamiera con cassetto grezzi pieno",
+    "Carico ultima lamiera grezzi",
+    "Carico lamiera spessore massimo",
+    "Carico lamiera spessore minimo",
+    "Sagoma eccessiva finiti"]},
   {id:"ciclolaser", t:"Ciclo e interfaccia col laser", voci:[
     "Lancio procedure da laser",
     "Test pieno-vuoto scarico",
@@ -611,17 +677,6 @@ const CHECKLIST = [
     {desc:"Test compilazione cassetti di scarico", oscurabile:true},
     {desc:"Test blocca cassetto", oscurabile:true},
     "Test svuota cassetto pieno"]},
-  {id:"sicurezza", t:"Sistemi di sicurezza", voci:[
-    "Test E-STOP 1 — quadro elettrico",
-    "Test E-STOP 2 — pulpito P1",
-    "Test E-STOP 3 — pulpito P2",
-    {desc:"Test E-STOP laser", oscurabile:true},
-    "Test cancello accesso 1",
-    "Test cancello accesso 2",
-    "Prova emergenze (arresto effettivo e ripristino)"]},
-  {id:"sicurauto", t:"Sicurezze specifiche automazione", voci:[
-    "Barriere / recinzione zona magazzino","Fotocellule zona carico/scarico","Riparo mobile",
-    "Emergenza dedicata automazione","Anti-caduta pila fogli"]},
   {id:"commerciali", t:"Verifica dati commerciali rispetto al foglio", voci:[
     "Formato minimo foglio (X × Y)","Formato massimo foglio (X × Y)",
     "Spessore minimo / massimo gestibile","Peso massimo pila / foglio"]},
@@ -780,9 +835,14 @@ function renderComponenti(){
 }
 
 /* ====== RENDER: CHECKLIST ====== */
+/* Tipo impianto: le sezioni con soloMagazzino:true compaiono solo se in testata è scelto "magazzino".
+   Carico-Scarico = foglio base; Magazzino = base + sezioni traslatore/elevatore, regolazioni pesa, test automatico. */
+function tipoImpianto(){ return (state.testata||{}).tipoImpianto==="magazzino" ? "magazzino" : "carico-scarico"; }
+function secVisible(sec){ return !sec.soloMagazzino || tipoImpianto()==="magazzino"; }
 function renderChecklist(){
   const body=document.getElementById("checklistBody"); body.innerHTML="";
   CHECKLIST.forEach(sec=>{
+    if(!secVisible(sec)) return;
     const blk=el(`<div class="sec-group"><h3>${esc(sec.t)}</h3></div>`);
     if(sec.perAsse){
       state.assi.forEach(a=>{
@@ -903,6 +963,7 @@ function lockRow(key){
 function countChecks(){
   let total=0, fat=0, sat=0;
   CHECKLIST.forEach(sec=>{
+    if(!secVisible(sec)) return;
     const mult = sec.perAsse?state.assi.length : (sec.perGruppo?sec.perGruppo.length:1);
     total += sec.voci.length*mult;
     if(sec.dynamic && state.extraVoci && state.extraVoci[sec.id]) total += state.extraVoci[sec.id].length;
@@ -1148,6 +1209,14 @@ function setFase(f){
     b.setAttribute("aria-pressed", String(b.dataset.faseSw===state.fase)));
   refreshTodo(); scheduleSave();
 }
+/* Carico-Scarico vs Magazzino: mostra/nasconde le sezioni solo-magazzino e ricalcola progresso/giallo. */
+function setTipoImpianto(v){
+  state.testata=state.testata||{};
+  state.testata.tipoImpianto = v==="magazzino" ? "magazzino" : "carico-scarico";
+  document.querySelectorAll("[data-tipo-sw]").forEach(b=>
+    b.setAttribute("aria-pressed", String(b.dataset.tipoSw===state.testata.tipoImpianto)));
+  renderChecklist(); updateProgress(); autosizeAll(); refreshTodo(); scheduleSave();
+}
 
 function updatePrintHead(){
   const t=state.testata||{};
@@ -1187,6 +1256,7 @@ function requiredNow(){ return REQUIRED_BASE.concat(REQUIRED_FASE[state.fase||"F
 /* itera ogni riga di checklist con la sua chiave e l'ambito leggibile */
 function eachCheckKey(cb){
   CHECKLIST.forEach(sec=>{
+    if(!secVisible(sec)) return;
     if(sec.perAsse){ state.assi.forEach(a=> sec.voci.forEach((vc,i)=> cb(`${sec.id}.${a}.${i}`, descOf(vc), `${sec.t} · Asse ${a}`))); }
     else if(sec.perGruppo){ sec.perGruppo.forEach(grp=> sec.voci.forEach((vc,i)=> cb(`${sec.id}.${grp}.${i}`, descOf(vc), `${sec.t} · ${grp}`))); }
     else {
@@ -1261,6 +1331,7 @@ function exportCsv(){
   L.push("CHECKLIST");
   L.push(csvRow(["Sezione","Voce","Asse/Gruppo","Esito FAT","Esito SAT","Tecnico FAT","Note FAT","Tecnico SAT","Note SAT","Opzione"]));
   CHECKLIST.forEach(sec=>{
+    if(!secVisible(sec)) return;
     const emit=(key,desc,scope)=>{
       const v=state.valori[key]||{};
       const fat = v.off ? "non presente" : (ES[v.fat]||"");
@@ -1314,6 +1385,7 @@ document.addEventListener("click", e=>{
   const t=e.target;
   if(t.id==="btnTodo"){ todoOn=!todoOn; try{ localStorage.setItem(TODO_KEY, todoOn?"1":"0"); }catch(err){} refreshTodo(); return; }
   if(t.dataset.faseSw){ setFase(t.dataset.faseSw); return; }
+  if(t.dataset.tipoSw){ setTipoImpianto(t.dataset.tipoSw); return; }
   if(t.closest && t.closest(".esito") && t.dataset.v){ setEsito(t.closest(".check").dataset.key, t.dataset.fase, t.dataset.v); }
   else if(t.dataset.delAxis!==undefined){
     const a=t.dataset.delAxis;
@@ -1362,7 +1434,15 @@ document.getElementById("btnConfirmAxes").addEventListener("click", ()=>{
   const c=document.getElementById("sec-componenti"); if(c) c.scrollIntoView({behavior:"smooth", block:"start"});
 });
 document.getElementById("btnAddProva").addEventListener("click", ()=>{ state.prove.push({foto:[]}); renderProve(); autosizeAll(); scheduleSave(); });
-document.getElementById("btnPdf").addEventListener("click", ()=>{ if(!validateBeforePdf())return; updatePrintHead(); window.print(); });
+document.getElementById("btnPdf").addEventListener("click", ()=>{
+  if(!validateBeforePdf())return;
+  updatePrintHead();
+  // Il nome del PDF proposto dal browser = document.title al momento della stampa.
+  const t=state.testata||{}; const orig=document.title;
+  document.title=`${san(t.matricola||"matr")}_${san(t.modello||"modello")}_foglio di collaudo`;
+  window.addEventListener("afterprint", ()=>{ document.title=orig; }, {once:true});
+  window.print();
+});
 document.getElementById("btnCsv").addEventListener("click", exportCsv);
 
 document.getElementById("btnSalva").addEventListener("click", ()=>{
@@ -1397,6 +1477,8 @@ document.getElementById("btnNuovo").addEventListener("click", ()=>{
 function renderAll(){
   renderAxes(); renderComponenti(); renderChecklist(); renderProve(); renderAllegato();
   hydratePaths(); autosizeAll(); updatePrintHead(); updateGates(); setFase(state.fase||"FAT");
+  document.querySelectorAll("[data-tipo-sw]").forEach(b=>
+    b.setAttribute("aria-pressed", String(b.dataset.tipoSw===tipoImpianto())));
 }
 /* registrato per ultimo: gira dopo gli altri handler di click (aggiunta/rimozione righe, esiti) */
 document.addEventListener("click", refreshTodo);
