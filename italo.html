@@ -299,7 +299,7 @@
   <div class="toolbar-in"><svg class="wlogo" viewBox="0 0 760 245"><use href="#wlogo"/></svg>
     <div class="tb-right">
       <div class="tb-titlerow">
-        <h1>Collaudo Italo <span>· Warcom · V1.4</span></h1>
+        <h1>Collaudo Italo <span>· Warcom · V1.5</span></h1>
         <span class="save-state" id="saveState">—</span>
       </div>
       <div class="tb-actions">
@@ -474,7 +474,9 @@ const COMPONENTI = [
     {k:"modello",l:"Modello"},{k:"cfg",l:"CFG code",code:1},{k:"order",l:"Order",code:1}]},
   {id:"filtro", t:"Filtro aspiratore", campi:[
     {k:"modello",l:"Modello"},{k:"serial",l:"Serial Number",code:1},
-    {k:"atex",l:"Atex",type:"sel",opts:["","Sì","No"]},{k:"serranda",l:"Serranda Auto.",type:"sel",opts:["","Sì","No"]},{k:"note",l:"Note",full:1}]},
+    {k:"atex",l:"Atex",type:"sel",opts:["","Sì","No"]},{k:"serranda",l:"Serranda Auto.",type:"sel",opts:["","Sì","No"]},{k:"note",l:"Note",full:1},
+    {sub:"Quadro elettrico"},
+    {k:"qeSerial",l:"Serial Number",code:1},{k:"qeSchema",l:"Schema",code:1},{k:"qeModello",l:"Modello"}]},
   {id:"ev", t:"Elettrovalvola proporzionale", campi:[
     {k:"fornitore",l:"Fornitore"},{k:"matricola",l:"Matricola n°",code:1},{k:"modello",l:"Modello"}]},
   {id:"testa", t:"Testa di taglio", campi:[
@@ -619,6 +621,7 @@ function inputEl(path, o){
   return e;
 }
 function fieldEl(path, f){
+  if(f.sub) return el(`<div class="comp-sub" style="grid-column:1/-1;margin-top:6px;padding-top:8px;border-top:1px dashed var(--line)"><h4 style="margin:0 0 2px;font-size:12.5px;color:var(--ink-soft)">${esc(f.sub)}</h4></div>`);
   const fld=el(`<div class="field"${f.full?' style="grid-column:1/-1"':''}><label>${esc(f.l)}</label></div>`);
   fld.appendChild(inputEl(path, {code:f.code, type:f.type, opts:f.opts}));
   return fld;
