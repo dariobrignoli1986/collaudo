@@ -81,7 +81,7 @@
   .mini-del:hover{background:var(--ko-bg); color:var(--ko)}
 
   /* ---- Checklist rows ---- */
-  .check{display:grid; grid-template-columns:1fr 168px 150px 1.2fr auto; gap:var(--s2); align-items:end;
+  .check{display:grid; grid-template-columns:1fr 168px 168px 150px 1.2fr auto; gap:var(--s2); align-items:end;
     padding:12px 0; border-bottom:1px solid var(--line)}
   .check:last-child{border-bottom:none}
   .check.off{opacity:.45}
@@ -95,6 +95,17 @@
   .esito button[aria-pressed="true"][data-v="KO"]{background:var(--ko-bg); color:var(--ko); border-color:var(--ko)}
   .esito button[aria-pressed="true"][data-v="NA"]{background:var(--na-bg); color:var(--na); border-color:var(--na)}
   .esito button:focus-visible{outline:3px solid var(--accent); outline-offset:1px}
+  /* ---- Doppia fase FAT / SAT ---- */
+  .field label .fase-tag{font:700 10px/1 var(--mono); padding:2px 5px; border-radius:4px; margin-right:5px; vertical-align:1px}
+  .fase-tag.fat{background:#e3edf7; color:var(--accent-ink)}
+  .fase-tag.sat{background:#f2e8f7; color:#6b3f8a}
+  /* la fase NON in corso è leggermente in secondo piano (solo a video) */
+  body.fase-SAT .check .esito[data-fase="FAT"], body.fase-FAT .check .esito[data-fase="SAT"]{opacity:.62}
+  @media print{ .check .esito{opacity:1 !important} }
+  /* selettore di fase in toolbar */
+  .fase-sw{display:inline-flex; border:1px solid var(--line-strong); border-radius:6px; overflow:hidden}
+  .fase-sw button{font:600 12px/1 var(--sans); cursor:pointer; padding:10px 12px; border:none; background:#fff; color:var(--muted); min-height:40px}
+  .fase-sw button[aria-pressed="true"]{background:var(--accent); color:#fff}
   .check select.opt{font:inherit; font-size:13px; padding:9px; border:1px solid var(--line-strong); border-radius:6px; min-height:44px}
   .check textarea[disabled], .check select[disabled]{background:var(--na-bg); color:var(--muted); cursor:not-allowed}
   .check-extra{grid-column:1/-1; margin-top:6px; padding-top:8px; border-top:1px dashed var(--line)}
@@ -299,7 +310,11 @@
   <div class="toolbar-in"><svg class="wlogo" viewBox="0 0 760 245"><use href="#wlogo"/></svg>
     <div class="tb-right">
       <div class="tb-titlerow">
-        <h1>Collaudo Automazione Laser Piano <span>· Warcom · V0.7 (bozza)</span></h1>
+        <h1>Collaudo Automazione Laser Piano <span>· Warcom · V0.8 (bozza)</span></h1>
+        <span class="fase-sw" role="group" title="Quale campagna stai compilando: FAT in officina, SAT dal cliente">
+          <button type="button" data-fase-sw="FAT" aria-pressed="true">FAT officina</button>
+          <button type="button" data-fase-sw="SAT" aria-pressed="false">SAT cliente</button>
+        </span>
         <span class="save-state" id="saveState">—</span>
       </div>
       <div class="tb-actions">
@@ -335,17 +350,33 @@
     <h2><span class="num">1</span> Testata commessa</h2>
     <div class="card-body">
       <div class="grid c3">
-        <div class="field"><label>Collaudatore (firma)</label><textarea class="grow" rows="1" data-path="testata.collaudatore" placeholder="Nome di chi collauda e firma"></textarea></div>
-        <div class="field"><label>Macchina tipo e modello</label><textarea class="grow" rows="1" data-path="testata.modello" placeholder="es. FIBERTUBE ITALO 60-200"></textarea></div>
+        <div class="field"><label>Macchina tipo e modello</label><textarea class="grow" rows="1" data-path="testata.modello" placeholder="es. WLL 4020"></textarea></div>
         <div class="field"><label>Numero commessa</label><textarea class="grow code" rows="1" data-path="testata.commessa"></textarea></div>
         <div class="field"><label>Matricola</label><textarea class="grow code" rows="1" data-path="testata.matricola"></textarea></div>
         <div class="field"><label>Cliente</label><textarea class="grow" rows="1" data-path="testata.cliente"></textarea></div>
+        <div class="field"><label>Riferimento cliente</label><textarea class="grow" rows="1" data-path="testata.rifCliente" placeholder="referente / ordine cliente"></textarea></div>
+        <div class="field"><label>Numero disegno elettrico</label><textarea class="grow code" rows="1" data-path="testata.disegnoEl"></textarea></div>
         <div class="field"><label>Numero assi (auto)</label><input id="numAssi" readonly style="background:#f6f8fa"></div>
         <div class="field"><label>Rif. Norma</label><textarea class="grow" rows="1" data-path="testata.norma"></textarea></div>
         <div class="field"><label>Lingua</label><textarea class="grow" rows="1" data-path="testata.lingua" placeholder="es. ITA/SPA"></textarea></div>
-        <div class="grid c2" style="grid-column:1/-1">
-          <div class="field"><label>Inizio collaudo</label><input type="date" data-path="testata.inizio"></div>
-          <div class="field"><label>Fine collaudo</label><input type="date" data-path="testata.fine"></div>
+      </div>
+
+      <!-- Due campagne distinte: FAT in officina, SAT dal cliente -->
+      <div class="comp" style="margin-top:var(--s3)">
+        <h3><span class="fase-tag fat">FAT</span> Collaudo in officina</h3>
+        <div class="grid c3">
+          <div class="field"><label>Eseguito da (firma)</label><textarea class="grow" rows="1" data-path="testata.fatCollaudatore" placeholder="Nome di chi collauda e firma"></textarea></div>
+          <div class="field"><label>Data inizio</label><input type="date" data-path="testata.fatInizio"></div>
+          <div class="field"><label>Data fine</label><input type="date" data-path="testata.fatFine"></div>
+        </div>
+      </div>
+      <div class="comp">
+        <h3><span class="fase-tag sat">SAT</span> Collaudo dal cliente</h3>
+        <p class="hint" style="margin-top:0">Facoltativo: si compila quando l'impianto è installato dal cliente. Non blocca il PDF del FAT.</p>
+        <div class="grid c3">
+          <div class="field"><label>Eseguito da (firma)</label><textarea class="grow" rows="1" data-path="testata.satCollaudatore"></textarea></div>
+          <div class="field"><label>Data inizio</label><input type="date" data-path="testata.satInizio"></div>
+          <div class="field"><label>Data fine</label><input type="date" data-path="testata.satFine"></div>
         </div>
       </div>
     </div>
@@ -418,8 +449,13 @@
     <h2><span class="num">✔</span> Validazione collaudo</h2>
     <div class="card-body">
       <div class="firma-line">
-        <span>Collaudatore: <strong id="firmaNome">—</strong></span>
-        <span>Data: <strong id="firmaData">—</strong></span>
+        <span><strong>FAT</strong> — Eseguito da: <strong id="firmaNomeFat">—</strong></span>
+        <span>Data: <strong id="firmaDataFat">—</strong></span>
+        <span class="firma-sign">Firma _______________________________</span>
+      </div>
+      <div class="firma-line" style="margin-top:18px">
+        <span><strong>SAT</strong> — Eseguito da: <strong id="firmaNomeSat">—</strong></span>
+        <span>Data: <strong id="firmaDataSat">—</strong></span>
         <span class="firma-sign">Firma _______________________________</span>
       </div>
     </div>
@@ -475,41 +511,107 @@ const COMPONENTI = [
 //   noNote     → riga con solo Esito + Tecnico (niente campo Valore/note)
 //   extra      → campi valore aggiuntivi a piena larghezza (es. M1/M2 per angolo)
 // sezione con dynamic:true → voci fisse + righe "richiesta particolare" aggiungibili dall'utente
+/* Struttura ricalcata sulla scheda storica "SCHEDA COLLAUDO IMPIANTO" (rev4), riordinata secondo la
+   filosofia dei fogli laser piano / CDF / laser tubo: sicurezze in una sezione propria, movimentazione
+   per asse, voci tipicamente non applicabili marcate "oscurabile". */
 const CHECKLIST = [
   {id:"prelim", t:"Operazioni preliminari", voci:[
-    "Verifica Distinta Macchina","Controllo fasi di alimentazione","Chiusura fusibili e verifica tensioni",
-    "Nodo schede ausiliarie","Impostazione timer reset sicurezze","Collegamento aria",
-    "Pressostato aria a 7 bar","Messa in bolla macchina","Impostazioni pompette grasso","Impostazioni LAN (indirizzo IP)"]},
-  {id:"sw", t:"Installazione software", voci:[
-    "Autosetup CN"]},
+    "Verifica siglature componenti QE + BM",
+    "Verifica pittogrammi / targhe QE + BM",
+    "Fusibili quadro + scorta",
+    "Taratura termiche",
+    "Verifica tensioni quadro",
+    "Configurazione modulo di sicurezza",
+    "Configurazione inverter",
+    "Configurazione IP dispositivi in campo",
+    "Configurazione controllo spessore",
+    "Test inserzione comandi",
+    "Verifica senso di marcia motori",
+    "Test cavo LAN esterno",
+    "Test interblocchi esterni",
+    "Verifica posa cavi"]},
+  {id:"sw", t:"Software e HMI", voci:[
+    "Download programma PLC",
+    "Download programma HMI",
+    "Configurazione generale impianto da HMI",
+    "Verifica testi allarmi HMI",
+    {desc:"Verifica testi multilingua HMI", oscurabile:true}]},
   {id:"testio", t:"Test I/O", voci:[
-    "Test ingressi (I) — sensori, finecorsa, pulsanti, sicurezze",
-    "Test uscite (O) — elettrovalvole, spie, attuatori"]},
+    "Test I/O quadro",
+    "Test I/O in campo"]},
   {id:"movim", t:"Prima movimentazione", perAsse:true, voci:[
     "Verifica senso rotazione","Accoppiamento (meccanico)","Velocità dal CN","Fattore di conversione",
     "Taratura asse reale","Finecorsa asse reale","Inversioni asse virtuale","Finecorsa asse virtuale",
     "Prova massima velocità"]},
-  {id:"vuoto", t:"Presa a vuoto (ventose)", voci:[
-    "Generatore di vuoto / pompa","Tenuta ventose e circuito vuoto","Sensori di vuoto (presa foglio)",
-    "Prova presa e rilascio foglio"]},
-  {id:"separaz", t:"Separazione fogli (destacking)", voci:[
-    "Soffi aria di separazione","Separatori magnetici / spazzole","Controllo doppio foglio"]},
+  {id:"ventman", t:"Ventose — test manuali da HMI", voci:[
+    "Comando Z ventose da HMI (motori scollegati)",
+    "Comando Z ventose da HMI (motori collegati)",
+    "Comando X ventose da HMI (motori scollegati)",
+    "Comando X ventose da HMI (motori collegati)",
+    "Comandi sfogliatura da HMI",
+    "Comandi doppio foglio da HMI"]},
+  {id:"ventreg", t:"Ventose — regolazioni", voci:[
+    "Regolazione dispositivo controllo spessore",
+    "Regolazione extracorsa alto ventose",
+    "Regolazione extracorsa basso ventose",
+    "Regolazione extracorsa avanti ventose",
+    "Regolazione extracorsa indietro ventose",
+    "Azzeramento encoder X-Z",
+    "Quote ventose X-Z"]},
+  {id:"forcman", t:"Forche — test manuali da HMI", voci:[
+    "Comando Z forche da HMI (motori scollegati)",
+    "Comando Z forche da HMI (motori collegati)",
+    "Comando X forche da HMI (motori scollegati)",
+    "Comando X forche da HMI (motori collegati)"]},
+  {id:"forcreg", t:"Forche — regolazioni", voci:[
+    "Regolazione extracorsa alto forche",
+    "Regolazione extracorsa basso forche",
+    "Regolazione FC apre forche",
+    "Regolazione FC chiude forche",
+    "Azzeramento encoder Z",
+    "Quote forche X-Z",
+    "Regolazione FTC decremento lamiera",
+    {desc:"Regolazione controllo sagoma finiti", oscurabile:true},
+    {desc:"Regolazione FTC ingombro lamiera", oscurabile:true}]},
   {id:"magazzino", t:"Magazzino / torre", voci:[
-    "Movimentazione cassetti / scaffali","Sensori di posizione e presenza pila","Mappatura posizioni magazzino"]},
-  {id:"pallet", t:"Cambio pallet / navette", voci:[
-    "Movimentazione navette / cambio pallet","Sincronismo e sensori di posizione","Aggancio/sgancio pallet"]},
-  {id:"ciclo", t:"Ciclo e interfaccia col laser", voci:[
-    "Prova ciclo di carico automatico completo (prelievo foglio → posizionamento su pallet)",
-    "Prova ciclo di scarico (pezzi tagliati / scheletro)",
-    "Sincronizzazione / handshake con la macchina laser (richiesta foglio, foglio pronto, consenso ciclo, allarmi incrociati)",
-    "Centraggio / battuta foglio",
-    "Tempo ciclo di carico/scarico (misura)",
-    "Prova di autonomia (N cicli ripetuti senza intervento)"]},
-  {id:"finitura", t:"Finitura", voci:[
-    "Numeri valvole e targhette","Backup su server","Pulizia quadro elettrico","Condizionatore quadro elettrico",
-    "Controllo traduzioni e lingua"]},
+    {desc:"Procedura da magazzino a finiti", oscurabile:true},
+    {desc:"Procedura da finiti a magazzino", oscurabile:true},
+    {desc:"Procedura da magazzino a grezzi", oscurabile:true},
+    {desc:"Procedura da grezzi a magazzino", oscurabile:true}]},
+  {id:"auto", t:"Ciclo automatico", voci:[
+    "Procedura di carico lamiera",
+    "Procedura di scarico lamiera",
+    "Procedura di scarico-carico lamiera",
+    "Procedura di scarico lamiera da forche",
+    "Carico lamiera con cassetto grezzi pieno",
+    "Carico ultima lamiera grezzi",
+    "Carico lamiera spessore massimo",
+    "Carico lamiera spessore minimo",
+    "Scarico lamiera fino a pieno cassetto",
+    "Scarico lamiera con cassetto vuoto",
+    "Scarico lamiera con spessore massimo",
+    "Scarico lamiera con spessore minimo",
+    "Tentativi esauriti di presa lamiera",
+    "Sforzo forche",
+    {desc:"Sagoma eccessiva finiti", oscurabile:true},
+    "Test sfogliatura + spazzola",
+    "Verifica assorbimento corrente — ventose con peso massimo",
+    "Verifica assorbimento corrente — forche con peso massimo"]},
+  {id:"ciclolaser", t:"Ciclo e interfaccia col laser", voci:[
+    "Lancio procedure da laser",
+    "Test pieno-vuoto scarico",
+    "Test ciclo abortito",
+    {desc:"Test decremento lamiera caricata", oscurabile:true},
+    {desc:"Test compilazione cassetti di scarico", oscurabile:true},
+    {desc:"Test blocca cassetto", oscurabile:true},
+    "Test svuota cassetto pieno"]},
   {id:"sicurezza", t:"Sistemi di sicurezza", voci:[
-    "Fotocellule (singole + logica interventi)","Luci / spie","Controllo semaforo","Emergenza pulpito",
+    "Test E-STOP 1 — quadro elettrico",
+    "Test E-STOP 2 — pulpito P1",
+    "Test E-STOP 3 — pulpito P2",
+    {desc:"Test E-STOP laser", oscurabile:true},
+    "Test cancello accesso 1",
+    "Test cancello accesso 2",
     "Prova emergenze (arresto effettivo e ripristino)"]},
   {id:"sicurauto", t:"Sicurezze specifiche automazione", voci:[
     "Barriere / recinzione zona magazzino","Fotocellule zona carico/scarico","Riparo mobile",
@@ -517,8 +619,17 @@ const CHECKLIST = [
   {id:"commerciali", t:"Verifica dati commerciali rispetto al foglio", voci:[
     "Formato minimo foglio (X × Y)","Formato massimo foglio (X × Y)",
     "Spessore minimo / massimo gestibile","Peso massimo pila / foglio"]},
-  {id:"consegna", t:"Documentazione e consegna", voci:[
-    "Verifica targa CE e marcatura dati macchina","Consegna documentazione e manuale d'uso"]},
+  {id:"finitura", t:"Finitura", voci:[
+    "Numeri valvole e targhette","Pulizia quadro elettrico","Condizionatore quadro elettrico",
+    "Controllo traduzioni e lingua"]},
+  {id:"varie", t:"Varie e consegna", dynamic:true, voci:[
+    "Foto dell'impianto",
+    {desc:"Rilevare tempo ciclo automazione", extra:[{k:"tempo", l:"Tempo ciclo misurato", code:1}]},
+    "Archiviazione progetto sul server",
+    "Archiviazione manuale utente",
+    "Seriale componenti HW",
+    "Verifica targa CE e marcatura dati macchina",
+    "Consegna documentazione e manuale d'uso"]},
 ];
 
 const MATERIALI = ["","Ferro (O2)","Ferro (N2)","Inox","Alluminio","Altro"];
@@ -530,12 +641,22 @@ const DEFAULT_ASSI = ["X","Z"];
 let state = loadState();
 
 function freshState(){
-  return { testata:{norma:"CE"}, assi:[...DEFAULT_ASSI], assiConfirmed:false, drive:{}, motore:{}, comp:{}, telecamere:[{}],
+  return { testata:{norma:"CE"}, fase:"FAT", assi:[...DEFAULT_ASSI], assiConfirmed:false, drive:{}, motore:{}, comp:{}, telecamere:[{}],
            valori:{}, extraVoci:{}, prove:[{foto:[]}], prove_extra:{}, note:"" };
 }
-function migrate(s){ // collaudatore unifica il vecchio "compilato da"
-  if(s && s.testata && !s.testata.collaudatore && s.testata.compilatore){ s.testata.collaudatore=s.testata.compilatore; }
-  if(s && s.assiConfirmed===undefined) s.assiConfirmed=true; // stati salvati prima del wizard: non li blocchiamo
+function migrate(s){
+  if(!s) return s;
+  if(s.testata && !s.testata.collaudatore && s.testata.compilatore){ s.testata.collaudatore=s.testata.compilatore; }
+  if(s.assiConfirmed===undefined) s.assiConfirmed=true;   // stati salvati prima del wizard: non li blocchiamo
+  if(!s.fase) s.fase="FAT";
+  // esito singolo -> doppia fase: il vecchio esito diventa il FAT (collaudo in officina)
+  const t=s.testata||{};
+  if(t.collaudatore && !t.fatCollaudatore) t.fatCollaudatore=t.collaudatore;
+  if(t.inizio && !t.fatInizio) t.fatInizio=t.inizio;
+  if(t.fine   && !t.fatFine)   t.fatFine=t.fine;
+  Object.values(s.valori||{}).forEach(v=>{
+    if(v && v.esito!==undefined){ if(!v.fat) v.fat=v.esito; delete v.esito; }
+  });
   return s;
 }
 function loadState(){
@@ -690,19 +811,23 @@ function buildCheck(key, voce){
   const desc = typeof voce==="string" ? voce : voce.desc;
   const v = state.valori[key] || {};
   const off = !!v.off;
-  const na  = v.esito==="NA";
-  const lockVal = off || na;               // su N.A. o "non presente" la riga si blocca, nome tecnico incluso
+  // FAT e SAT sono INDIPENDENTI (nel foglio storico una voce poteva essere FAT=OK e SAT=N/A):
+  // la riga si blocca solo se è "non presente" o se ENTRAMBE le fasi sono N.A.
+  const lockVal = off || (v.fat==="NA" && v.sat==="NA");
   const disVal = lockVal ? 'disabled' : '';
+  const grp = (fase, cls) => `
+    <div class="field"><label><span class="fase-tag ${cls}">${fase}</span>Esito</label>
+      <div class="esito" role="group" data-fase="${fase}">
+        <button type="button" data-fase="${fase}" data-v="OK" aria-pressed="${v[cls]==="OK"}" ${off?'disabled':''}>OK</button>
+        <button type="button" data-fase="${fase}" data-v="KO" aria-pressed="${v[cls]==="KO"}" ${off?'disabled':''}>KO</button>
+        <button type="button" data-fase="${fase}" data-v="NA" aria-pressed="${v[cls]==="NA"}" ${off?'disabled':''}>N.A.</button>
+      </div>
+    </div>`;
   const row=el(`<div class="check${off?' off':''}" data-key="${key}">
     <div class="desc">${esc(desc)}${obj.oscurabile?
       `<label class="na-toggle no-print"><input type="checkbox" data-off="${key}" ${off?'checked':''}> non presente</label>`:""}</div>
-    <div class="field"><label>Esito</label>
-      <div class="esito" role="group">
-        <button type="button" data-v="OK" aria-pressed="${v.esito==="OK"}" ${off?'disabled':''}>OK</button>
-        <button type="button" data-v="KO" aria-pressed="${v.esito==="KO"}" ${off?'disabled':''}>KO</button>
-        <button type="button" data-v="NA" aria-pressed="${na}" ${off?'disabled':''}>N.A.</button>
-      </div>
-    </div>
+    ${grp("FAT","fat")}
+    ${grp("SAT","sat")}
     <div class="field"><label>Tecnico</label><textarea class="grow" rows="1" data-vk="${key}" data-vf="tecnico" ${disVal}>${esc(v.tecnico||"")}</textarea></div>
     ${obj.noNote?"":`<div class="field"><label>Valore / note</label><textarea class="grow code" rows="1" data-vk="${key}" data-vf="note" ${disVal}>${esc(v.note||"")}</textarea></div>`}
   </div>`);
@@ -711,7 +836,7 @@ function buildCheck(key, voce){
     const s=document.createElement("select"); s.className="opt"; s.dataset.vk=key; s.dataset.vf="opt"; if(lockVal)s.disabled=true;
     ["",...obj.sel].forEach(o=>{ const x=document.createElement("option"); x.value=o; x.textContent=o||"—"; s.appendChild(x); });
     s.value=v.opt||""; f.appendChild(s);
-    row.insertBefore(f, row.children[2]);
+    row.insertBefore(f, row.children[3]);   // dopo FAT+SAT, prima del Tecnico
   }
   if(obj.extra){
     const ex=v.extra||{};
@@ -728,54 +853,60 @@ function buildCheck(key, voce){
   }
   return row;
 }
-function setEsito(key,v){
+/* fase: "FAT" (officina) | "SAT" (dal cliente). La chiave nello stato è minuscola: v.fat / v.sat */
+function faseKey(fase){ return fase==="SAT" ? "sat" : "fat"; }
+function setEsito(key, fase, v){
   if(!state.valori[key]) state.valori[key]={};
   const cur=state.valori[key];
   if(cur.off) return;
+  const fk=faseKey(fase);
   // N.A. richiede prima il nome del tecnico che lo dichiara
-  if(v==="NA" && cur.esito!=="NA" && !(cur.tecnico||"").trim()){
+  if(v==="NA" && cur[fk]!=="NA" && !(cur.tecnico||"").trim()){
     alert("Inserisci prima il nome del tecnico che dichiara «Not Available».");
     const ta=document.querySelector(`.check[data-key="${CSS.escape(key)}"] textarea[data-vf="tecnico"]`);
     if(ta) ta.focus();
     return;
   }
-  cur.esito = (cur.esito===v)?"":v;
+  cur[fk] = (cur[fk]===v)?"":v;
   const rowEl=document.querySelector(`.check[data-key="${CSS.escape(key)}"]`);
-  rowEl && rowEl.querySelectorAll(`.esito button`).forEach(b=>
-    b.setAttribute("aria-pressed", String(cur.esito===b.dataset.v)));
+  rowEl && rowEl.querySelectorAll(`.esito[data-fase="${fase}"] button`).forEach(b=>
+    b.setAttribute("aria-pressed", String(cur[fk]===b.dataset.v)));
   clearRowInvalid(rowEl);
   lockRow(key);
   updateProgress(); scheduleSave();
 }
-/* N.A. (o "non presente") disattiva l'intera riga, nome tecnico incluso: per modificarlo cambia stato */
+/* "non presente", o N.A. su ENTRAMBE le fasi, disattiva la riga (nome tecnico incluso) */
 function lockRow(key){
   const v=state.valori[key]||{};
-  const locked = !!(v.off || v.esito==="NA");
+  const locked = !!(v.off || (v.fat==="NA" && v.sat==="NA"));
   const row=document.querySelector(`.check[data-key="${CSS.escape(key)}"]`);
   if(!row) return;
   row.querySelectorAll('textarea[data-vk], select.opt').forEach(el=>{ el.disabled=locked; });
 }
 function countChecks(){
-  let total=0, done=0;
+  let total=0, fat=0, sat=0;
   CHECKLIST.forEach(sec=>{
     const mult = sec.perAsse?state.assi.length : (sec.perGruppo?sec.perGruppo.length:1);
     total += sec.voci.length*mult;
     if(sec.dynamic && state.extraVoci && state.extraVoci[sec.id]) total += state.extraVoci[sec.id].length;
   });
-  Object.values(state.valori).forEach(v=>{ if(v && (v.esito||v.off)) done++; });
-  return {total,done};
+  Object.values(state.valori).forEach(v=>{ if(!v) return; if(v.fat||v.off) fat++; if(v.sat||v.off) sat++; });
+  return {total, fat, sat, done:fat};
 }
 function updateProgress(){
-  const {total,done}=countChecks();
+  const {total,fat,sat}=countChecks();
   const p=document.getElementById("prog-check");
-  p.textContent=`${done}/${total}`; p.classList.toggle("done", total>0&&done>=total);
+  p.textContent=`FAT ${fat}/${total} · SAT ${sat}/${total}`;
+  p.classList.toggle("done", total>0 && fat>=total);
 }
 
 /* ====== GATING A CASCATA (1→2→3→4/5) ====== */
 // Sezione 1 completa = tutti i campi testata tranne "Fine collaudo"
+// Il blocco SAT, il "Fine" del FAT e il riferimento cliente non bloccano la cascata
 function testataComplete(){
   return [...document.querySelectorAll('#sec-testata [data-path]')]
-    .filter(i=> i.dataset.path!=="testata.fine")
+    .filter(i=>{ const p=i.dataset.path;
+      return p!=="testata.fatFine" && p!=="testata.rifCliente" && !p.startsWith("testata.sat"); })
     .every(i=> (getVal(i.dataset.path)||"").toString().trim()!=="");
 }
 // Sezione 3 completa = tutti i campi componenti tranne le note (fibra/note/indirizzi secondari esclusi)
@@ -959,10 +1090,12 @@ const TODO_KEY = LS_KEY + ":todo";
 let todoOn = true;
 try{ todoOn = localStorage.getItem(TODO_KEY) !== "0"; }catch(e){}
 
-/* campi liberi: note (testata, checklist, prove), note fibra, indirizzi secondari */
+/* campi liberi: note, note fibra, indirizzi secondari, e TUTTO il blocco SAT (si compila dal cliente,
+   settimane dopo il FAT: non ha senso segnalarlo come "da compilare" in officina) */
 function isFreeField(el){
   const p = el.dataset.path;
-  if(p!==undefined) return /(^|\.)note$/.test(p) || /\.fibra$/.test(p) || p.includes(".secondari.");
+  if(p!==undefined) return /(^|\.)note$/.test(p) || /\.fibra$/.test(p) || p.includes(".secondari.")
+                        || p.startsWith("testata.sat") || p==="testata.rifCliente";
   return el.dataset.vf==="note" || el.dataset.pf==="note";
 }
 function refreshTodo(){
@@ -978,12 +1111,23 @@ function refreshTodo(){
     if(isFreeField(el)) return;
     if(!String(el.value||"").trim()) el.classList.add("todo");
   });
-  // righe di checklist senza esito (NA e "non presente" contano come compilate)
+  // righe senza esito NELLA FASE IN CORSO (N.A. e "non presente" contano come compilate).
+  // Il giallo segue il selettore FAT/SAT: in officina evidenzia i FAT mancanti, dal cliente i SAT.
+  const fase = state.fase || "FAT";
   document.querySelectorAll(".check").forEach(row=>{
     if(row.classList.contains("off")) return;
-    const es=row.querySelector(".esito");
+    const es=row.querySelector(`.esito[data-fase="${fase}"]`);
     if(es && !es.querySelector('button[aria-pressed="true"]')){ row.classList.add("todo-row"); es.classList.add("todo"); }
   });
+}
+/* cambia la campagna in corso: sposta il giallo e ciò che il PDF pretende */
+function setFase(f){
+  state.fase = (f==="SAT") ? "SAT" : "FAT";
+  document.body.classList.remove("fase-FAT","fase-SAT");
+  document.body.classList.add("fase-"+state.fase);
+  document.querySelectorAll("[data-fase-sw]").forEach(b=>
+    b.setAttribute("aria-pressed", String(b.dataset.faseSw===state.fase)));
+  refreshTodo(); scheduleSave();
 }
 
 function updatePrintHead(){
@@ -991,24 +1135,36 @@ function updatePrintHead(){
   document.getElementById("phTitle").textContent=`Collaudo ${t.modello||"Laser"} — matr. ${t.matricola||"—"}`;
   document.getElementById("phMeta").innerHTML=
     `Commessa: ${esc(t.commessa||"—")} · Cliente: ${esc(t.cliente||"—")} · Assi: ${state.assi.length} · `+
-    `Collaudatore: ${esc(t.collaudatore||"—")}<br>`+
-    `Inizio: ${esc(t.inizio||"—")} · Fine: ${esc(t.fine||"—")}`;
-  document.getElementById("firmaNome").textContent = t.collaudatore || "—";
-  document.getElementById("firmaData").textContent = (t.fine||"").slice(0,10) || "—";
+    `Disegno el.: ${esc(t.disegnoEl||"—")}<br>`+
+    `FAT officina: ${esc(t.fatCollaudatore||"—")} · ${esc(t.fatInizio||"—")} → ${esc(t.fatFine||"—")}<br>`+
+    `SAT cliente: ${esc(t.satCollaudatore||"—")} · ${esc(t.satInizio||"—")} → ${esc(t.satFine||"—")}`;
+  document.getElementById("firmaNomeFat").textContent = t.fatCollaudatore || "—";
+  document.getElementById("firmaDataFat").textContent = (t.fatFine||"").slice(0,10) || "—";
+  document.getElementById("firmaNomeSat").textContent = t.satCollaudatore || "—";
+  document.getElementById("firmaDataSat").textContent = (t.satFine||"").slice(0,10) || "—";
 }
 
 /* ====== CAMPI OBBLIGATORI (bloccanti prima del PDF) ====== */
-const REQUIRED = [
-  {path:"testata.collaudatore",l:"Collaudatore (firma)"},
+/* Il SAT non è obbligatorio: l'impianto passa il FAT in officina e parte. Il PDF del FAT non deve
+   pretendere dati che, per definizione, non esistono ancora. */
+const REQUIRED_BASE = [
   {path:"testata.modello",     l:"Macchina tipo e modello"},
   {path:"testata.commessa",    l:"Numero commessa"},
   {path:"testata.matricola",   l:"Matricola"},
   {path:"testata.cliente",     l:"Cliente"},
+  {path:"testata.disegnoEl",   l:"Numero disegno elettrico"},
   {path:"testata.norma",       l:"Rif. Norma"},
   {path:"testata.lingua",      l:"Lingua"},
-  {path:"testata.inizio",      l:"Inizio collaudo"},
-  {path:"testata.fine",        l:"Fine collaudo"},
 ];
+const REQUIRED_FASE = {
+  FAT: [{path:"testata.fatCollaudatore",l:"FAT — Eseguito da"},
+        {path:"testata.fatInizio",      l:"FAT — Data inizio"},
+        {path:"testata.fatFine",        l:"FAT — Data fine"}],
+  SAT: [{path:"testata.satCollaudatore",l:"SAT — Eseguito da"},
+        {path:"testata.satInizio",      l:"SAT — Data inizio"},
+        {path:"testata.satFine",        l:"SAT — Data fine"}],
+};
+function requiredNow(){ return REQUIRED_BASE.concat(REQUIRED_FASE[state.fase||"FAT"]); }
 /* itera ogni riga di checklist con la sua chiave e l'ambito leggibile */
 function eachCheckKey(cb){
   CHECKLIST.forEach(sec=>{
@@ -1038,21 +1194,22 @@ function validateBeforePdf(){
   document.querySelectorAll(".invalid").forEach(e=>e.classList.remove("invalid"));
   document.querySelectorAll(".invalid-row").forEach(e=>e.classList.remove("invalid-row"));
   const missing=[];
-  REQUIRED.forEach(r=>{
+  requiredNow().forEach(r=>{
     const v=(getVal(r.path)||"").toString().trim();
     if(!v){ missing.push(r.l); const inp=document.querySelector(`[data-path="${r.path}"]`); if(inp) inp.classList.add("invalid"); }
   });
-  // Checklist: ogni riga OK, oppure KO con commento, oppure N.A. con nome tecnico
+  // Checklist: si valida SOLO la fase in corso (il FAT non pretende i SAT, e viceversa)
+  const fase=state.fase||"FAT", fk=faseKey(fase);
   const problems=[]; let firstEl=null;
   eachCheckKey((key,desc,scope)=>{
     const v=state.valori[key]||{};
     if(v.off) return;                                   // "non presente" = risolto
     const row=document.querySelector(`.check[data-key="${CSS.escape(key)}"]`);
     const flag=(field,txt)=>{ problems.push(`${scope} → «${desc}»: ${txt}`); if(row){ row.classList.add("invalid-row"); if(field) field.classList.add("invalid"); } if(!firstEl) firstEl=row; };
-    if(!v.esito){ flag(row&&row.querySelector(".esito"), "manca l'esito"); return; }
+    if(!v[fk]){ flag(row&&row.querySelector(`.esito[data-fase="${fase}"]`), `manca l'esito ${fase}`); return; }
     if(!(v.tecnico||"").trim()) flag(row&&row.querySelector('textarea[data-vf="tecnico"]'), "manca il tecnico");
     const noteField=row&&row.querySelector('textarea[data-vf="note"]');
-    if(v.esito==="KO" && noteField && !(v.note||"").trim()) flag(noteField, "KO senza commento");
+    if(v[fk]==="KO" && noteField && !(v.note||"").trim()) flag(noteField, `KO in ${fase} senza commento`);
   });
   if(missing.length || problems.length){
     let msg="";
@@ -1075,19 +1232,22 @@ function exportCsv(){
   const t=state.testata||{}; const ES={OK:"OK",KO:"KO",NA:"N.A."}; const L=[];
   L.push("COLLAUDO LASER — WARCOM");
   L.push(csvRow(["Campo","Valore"]));
-  [["Modello",t.modello],["Matricola",t.matricola],["Cliente",t.cliente],["Commessa",t.commessa],
-   ["Collaudatore",t.collaudatore],["Norma",t.norma],["Lingua",t.lingua],
-   ["Inizio",t.inizio],["Fine",t.fine],["N° assi",state.assi.length]].forEach(r=>L.push(csvRow(r)));
+  [["Modello",t.modello],["Matricola",t.matricola],["Cliente",t.cliente],["Rif. cliente",t.rifCliente],
+   ["Commessa",t.commessa],["N° disegno elettrico",t.disegnoEl],["Norma",t.norma],["Lingua",t.lingua],
+   ["FAT eseguito da",t.fatCollaudatore],["FAT inizio",t.fatInizio],["FAT fine",t.fatFine],
+   ["SAT eseguito da",t.satCollaudatore],["SAT inizio",t.satInizio],["SAT fine",t.satFine],
+   ["N° assi",state.assi.length]].forEach(r=>L.push(csvRow(r)));
   L.push("");
   L.push("CHECKLIST");
-  L.push(csvRow(["Sezione","Voce","Asse/Gruppo","Esito","Tecnico","Valore/Note","Opzione"]));
+  L.push(csvRow(["Sezione","Voce","Asse/Gruppo","Esito FAT","Esito SAT","Tecnico","Valore/Note","Opzione"]));
   CHECKLIST.forEach(sec=>{
     const emit=(key,desc,scope)=>{
       const v=state.valori[key]||{};
-      const esito = v.off ? "non presente" : (ES[v.esito]||"");
+      const fat = v.off ? "non presente" : (ES[v.fat]||"");
+      const sat = v.off ? "non presente" : (ES[v.sat]||"");
       let note=v.note||"";
       if(v.extra){ const ex=Object.entries(v.extra).filter(([,x])=>x).map(([k,x])=>`${k}=${x}`).join(" · "); if(ex) note = note?`${note} · ${ex}`:ex; }
-      L.push(csvRow([sec.t, desc, scope||"", esito, v.tecnico||"", note, v.opt||""]));
+      L.push(csvRow([sec.t, desc, scope||"", fat, sat, v.tecnico||"", note, v.opt||""]));
     };
     if(sec.perAsse){ state.assi.forEach(a=> sec.voci.forEach((vc,i)=> emit(`${sec.id}.${a}.${i}`, descOf(vc), "Asse "+a))); }
     else if(sec.perGruppo){ sec.perGruppo.forEach(grp=> sec.voci.forEach((vc,i)=> emit(`${sec.id}.${grp}.${i}`, descOf(vc), grp))); }
@@ -1134,7 +1294,8 @@ document.addEventListener("change", e=>{
 document.addEventListener("click", e=>{
   const t=e.target;
   if(t.id==="btnTodo"){ todoOn=!todoOn; try{ localStorage.setItem(TODO_KEY, todoOn?"1":"0"); }catch(err){} refreshTodo(); return; }
-  if(t.closest && t.closest(".esito") && t.dataset.v){ setEsito(t.closest(".check").dataset.key, t.dataset.v); }
+  if(t.dataset.faseSw){ setFase(t.dataset.faseSw); return; }
+  if(t.closest && t.closest(".esito") && t.dataset.v){ setEsito(t.closest(".check").dataset.key, t.dataset.fase, t.dataset.v); }
   else if(t.dataset.delAxis!==undefined){
     const a=t.dataset.delAxis;
     if(confirm(`Rimuovere l'asse ${a}? Si perdono i dati drive/motore/movimentazione di quell'asse.`)){
@@ -1216,7 +1377,7 @@ document.getElementById("btnNuovo").addEventListener("click", ()=>{
 /* ====== AVVIO ====== */
 function renderAll(){
   renderAxes(); renderComponenti(); renderChecklist(); renderProve(); renderAllegato();
-  hydratePaths(); autosizeAll(); updatePrintHead(); updateGates(); refreshTodo();
+  hydratePaths(); autosizeAll(); updatePrintHead(); updateGates(); setFase(state.fase||"FAT");
 }
 /* registrato per ultimo: gira dopo gli altri handler di click (aggiunta/rimozione righe, esiti) */
 document.addEventListener("click", refreshTodo);
