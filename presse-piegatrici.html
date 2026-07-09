@@ -177,7 +177,7 @@
 
   /* ---- PRINT (PDF) ---- */
   @media print{
-    @page{ size:A4; margin:12mm 10mm; }
+    @page{ size:A4; margin:9mm 9mm; }
     body{background:#fff; font-size:10px}
     .toolbar, .no-print, .esito button[aria-pressed="false"], .row-del, .fdel, .add-row, .add-axis, .sub-add, .chip button, .hint, .lead, .na-toggle{display:none !important}
     .wrap{max-width:none; padding:0}
@@ -299,7 +299,7 @@
   <div class="toolbar-in"><svg class="wlogo" viewBox="0 0 760 245"><use href="#wlogo"/></svg>
     <div class="tb-right">
       <div class="tb-titlerow">
-        <h1>Collaudo Presse Piegatrici <span>· Warcom · V0.3 (bozza)</span></h1>
+        <h1>Collaudo Presse Piegatrici <span>· Warcom · V0.4 (bozza)</span></h1>
         <span class="save-state" id="saveState">—</span>
       </div>
       <div class="tb-actions">
@@ -1182,7 +1182,15 @@ document.getElementById("btnConfirmAxes").addEventListener("click", ()=>{
   const c=document.getElementById("sec-componenti"); if(c) c.scrollIntoView({behavior:"smooth", block:"start"});
 });
 document.getElementById("btnAddProva").addEventListener("click", ()=>{ state.prove.push({foto:[]}); renderProve(); autosizeAll(); scheduleSave(); });
-document.getElementById("btnPdf").addEventListener("click", ()=>{ if(!validateBeforePdf())return; updatePrintHead(); window.print(); });
+document.getElementById("btnPdf").addEventListener("click", ()=>{
+  if(!validateBeforePdf())return;
+  updatePrintHead();
+  // Il nome del PDF proposto dal browser = document.title al momento della stampa.
+  const t=state.testata||{}; const orig=document.title;
+  document.title=`${san(t.matricola||"matr")}_${san(t.modello||"modello")}_foglio di collaudo`;
+  window.addEventListener("afterprint", ()=>{ document.title=orig; }, {once:true});
+  window.print();
+});
 document.getElementById("btnCsv").addEventListener("click", exportCsv);
 
 document.getElementById("btnSalva").addEventListener("click", ()=>{
