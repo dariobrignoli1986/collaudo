@@ -332,7 +332,7 @@
   <div class="toolbar-in"><svg class="wlogo" viewBox="0 0 760 245"><use href="#wlogo"/></svg>
     <div class="tb-right">
       <div class="tb-titlerow">
-        <h1>Collaudo Automazione Laser Piano <span>· Warcom · V1.3</span></h1>
+        <h1>Collaudo Automazione Laser Piano <span>· Warcom · V1.4</span></h1>
         <span class="fase-sw" role="group" title="Quale campagna stai compilando: FAT in officina, SAT dal cliente">
           <button type="button" data-fase-sw="FAT" aria-pressed="true">FAT officina</button>
           <button type="button" data-fase-sw="SAT" aria-pressed="false">SAT cliente</button>
@@ -1457,11 +1457,19 @@ document.getElementById("btnConfirmAxes").addEventListener("click", ()=>{
   const c=document.getElementById("sec-componenti"); if(c) c.scrollIntoView({behavior:"smooth", block:"start"});
 });
 document.getElementById("btnAddProva").addEventListener("click", ()=>{ state.prove.push({foto:[]}); renderProve(); autosizeAll(); scheduleSave(); });
-document.getElementById("btnPdf").addEventListener("click", ()=>{
+document.getElementById("btnPdf").addEventListener("click", async ()=>{
   if(!validateBeforePdf())return;
+  // Backup automatico prima della stampa: salva SEMPRE uno ZIP con il .json finale + le foto,
+  // così il JSON non si perde mai (il PDF di stampa non è catturabile via JS → non può entrare nello ZIP).
+  persist();
+  const t=state.testata||{};
+  const base=`collaudo_${san(t.modello||"modello")}_${san(t.matricola||"matr")}`;
+  const zf=[{name:base+".json", bytes:new TextEncoder().encode(JSON.stringify(state,null,2))}];
+  state.prove.forEach((p,i)=> (p.foto||[]).forEach(f=> zf.push({name:`prova-${i+1}/${f.name}`, bytes:dataUrlToBytes(f.data)})));
+  await saveBlob(zipStore(zf), base+".zip", "application/zip");
   updatePrintHead();
   // Il nome del PDF proposto dal browser = document.title al momento della stampa.
-  const t=state.testata||{}; const orig=document.title;
+  const orig=document.title;
   document.title=`${san(t.matricola||"matr")}_${san(t.modello||"modello")}_foglio di collaudo`;
   window.addEventListener("afterprint", ()=>{ document.title=orig; }, {once:true});
   window.print();
