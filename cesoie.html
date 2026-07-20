@@ -64,6 +64,7 @@
   .field input, .field textarea, .field select{font:inherit; font-size:14px; padding:9px 10px; border:1px solid var(--line-strong);
     border-radius:6px; background:#fff; color:var(--ink); width:100%; min-height:44px}
   textarea.grow{resize:none; overflow:hidden; min-height:44px; line-height:1.4}
+  .print-note{display:none; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.4}
   .field .code{font-family:var(--mono); font-size:13px}
   .field input:focus, .field textarea:focus, .field select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(31,78,121,.18)}
   /* campi ancora da compilare: giallo pastello. Dichiarato PRIMA di .invalid: il rosso vince sul giallo. */
@@ -201,7 +202,9 @@
     .field input, .field textarea, .field select{border:none; border-bottom:1px solid #bbb; border-radius:0; padding:1px 0; min-height:0; box-shadow:none; font-size:10px}
     .field select{appearance:none; -webkit-appearance:none}
     input[type=date]::-webkit-calendar-picker-indicator, input[type=datetime-local]::-webkit-calendar-picker-indicator{display:none}
-    textarea.grow{overflow:visible !important}
+    textarea.grow{display:none !important}
+    .print-note{display:block; white-space:pre-wrap; overflow-wrap:anywhere; font-size:10px; line-height:1.4; padding:1px 0; border-bottom:1px solid #bbb; min-height:11px; color:var(--ink)}
+    .print-note.code{font-family:var(--mono)}
     .field label{color:#444; font-size:8px; font-weight:600}
     .comp{break-inside:avoid; border:1px solid #bbb; padding:6px 8px; margin-bottom:6px}
     .comp > h3{font-size:11px; margin-bottom:5px}
@@ -306,7 +309,7 @@
   <div class="toolbar-in"><svg class="wlogo" viewBox="0 0 760 245"><use href="#wlogo"/></svg>
     <div class="tb-right">
       <div class="tb-titlerow">
-        <h1>Collaudo Cesoie <span>· Warcom · V0.7 (bozza)</span></h1>
+        <h1>Collaudo Cesoie <span>· Warcom · V0.8 (bozza)</span></h1>
         <span class="save-state" id="saveState">—</span>
       </div>
       <div class="tb-actions">
@@ -567,6 +570,19 @@ function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",
 function san(s){ return String(s||"").trim().replace(/[^\w.\-]+/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,""); }
 function autosize(t){ if(!t||t.tagName!=="TEXTAREA")return; t.style.height="auto"; t.style.height=(t.scrollHeight)+"px"; }
 function autosizeAll(){ document.querySelectorAll("textarea.grow").forEach(autosize); }
+/* --- Stampa note lunghe: i <textarea> hanno altezza fissa (calcolata a schermo) e non si espandono,
+   quindi in stampa il testo mandato a capo su piu' righe veniva TRONCATO. Prima di stampare rimpiazzo
+   ogni textarea con un <div> (che si auto-dimensiona e non taglia mai); dopo la stampa lo rimuovo. --- */
+function notesToPrint(){
+  document.querySelectorAll("textarea.grow").forEach(function(t){
+    var d=document.createElement("div");
+    d.className="print-note"+(t.classList.contains("code")?" code":"");
+    d.textContent=t.value;
+    d.setAttribute("data-print-clone","1");
+    t.parentNode.insertBefore(d, t.nextSibling);
+  });
+}
+function notesFromPrint(){ document.querySelectorAll("[data-print-clone]").forEach(function(d){ d.remove(); }); }
 
 /* costruisce un campo (label + input/textarea/select) */
 function inputEl(path, o){
@@ -1246,6 +1262,8 @@ toggleToTop();
 
 window.addEventListener("beforeunload", persist);
 window.addEventListener("beforeprint", autosizeAll);
+window.addEventListener("beforeprint", notesToPrint);
+window.addEventListener("afterprint", notesFromPrint);
 </script>
 <script>/*! qrcode-generator (c) 2009 Kazuhiko Arase — MIT license */
 var qrcode = function() {
