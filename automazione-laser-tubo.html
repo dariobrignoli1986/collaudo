@@ -151,6 +151,10 @@
   .chip button{border:none; background:#d6e0ea; color:var(--accent-ink); width:26px; height:26px; border-radius:999px;
     cursor:pointer; font-size:16px; line-height:1; display:grid; place-items:center}
   .chip button:hover{background:var(--ko-bg); color:var(--ko)}
+  .chip button.mv{background:transparent; font-size:13px} .chip button.mv:hover{background:#d6e0ea; color:var(--accent-ink)}
+  .chip button.mv:disabled{opacity:.25; cursor:default; background:transparent}
+  .chip[draggable="true"]{cursor:grab} .chip.dragging{opacity:.4} .chip.drop-before{box-shadow:-3px 0 0 var(--accent)}
+  @media (max-width:760px){ .chip button{width:40px; height:40px} }
   .add-axis{display:flex; gap:var(--s1); max-width:380px}
   .add-axis input{flex:1; font:inherit; padding:9px 10px; border:1px solid var(--line-strong); border-radius:6px; min-height:44px}
 
@@ -309,7 +313,7 @@
   <div class="toolbar-in"><svg class="wlogo" viewBox="0 0 760 245"><use href="#wlogo"/></svg>
     <div class="tb-right">
       <div class="tb-titlerow">
-        <h1>Collaudo Automazione Laser Tubo <span>· Warcom · V1.9</span></h1>
+        <h1>Collaudo Automazione Laser Tubo <span>· Warcom · V2.0</span></h1>
         <span class="save-state" id="saveState">—</span>
       </div>
       <div class="tb-actions">
@@ -381,7 +385,7 @@
     <h2><span class="num">2</span> Configurazione assi</h2>
     <p class="gate-msg"><span class="lk">🔒</span> <span>Compila la <strong>Testata commessa</strong> (sezione 1, tutti i campi tranne <em>Fine collaudo</em>) per sbloccare gli assi.</span></p>
     <div class="card-body">
-      <p class="hint">Gli assi qui definiti generano automaticamente i blocchi <strong>Drive</strong>, <strong>Motori</strong> e la sezione <strong>Prima movimentazione</strong>; il numero assi in testata si aggiorna da solo.</p>
+      <p class="hint">Gli assi qui definiti generano automaticamente i blocchi <strong>Drive</strong>, <strong>Motori</strong> e la sezione <strong>Prima movimentazione</strong>; il numero assi in testata si aggiorna da solo.<br><strong>Mettili nell'ordine di collegamento</strong> (trascina i chip, o usa ◀ ▶): drive e motori si presentano in quest'ordine.</p>
       <div class="chips" id="axisChips"></div>
       <div class="add-axis no-print">
         <input id="newAxis" placeholder="Nuovo asse (es. RC1)">
@@ -414,15 +418,7 @@
     <h2><span class="num">5</span> Prove di carico</h2>
     <p class="gate-msg"><span class="lk">🔒</span> <span>Completa l'<strong>Anagrafica componenti</strong> (sezione 3) per sbloccare le prove.</span></p>
     <div class="card-body">
-      <div class="grid c2" style="margin-bottom:var(--s3)">
-        <div class="field"><label>Tipo di carico</label>
-          <select data-path="prove_extra.tipo_carico">
-            <option value="">—</option>
-            <option value="Carico da Fascio">Carico da Fascio</option>
-            <option value="Carico da Catena">Carico da Catena</option>
-          </select>
-        </div>
-      </div>
+      <p class="hint">Tipo di carico (dalla <strong>Testata commessa</strong>, sez. 1): <strong id="proveTipoCarico">—</strong></p>
       <p class="hint">Una scheda per prova di carico. Da telefono puoi scattare le foto del carico: vengono rinominate coi dati della prova e un numero progressivo.</p>
       <div id="proveBody"></div>
       <button class="btn btn-accent add-row no-print" id="btnAddProva">+ Aggiungi prova</button>
@@ -495,6 +491,8 @@ const COMPONENTI = [
     {k:"plc",l:"Versione PLC User",code:1},{k:"iso",l:"Versione ISO User",code:1},{k:"ambiente",l:"Ambiente"}]},
   {id:"quadro", t:"Quadro elettrico", campi:[
     {k:"fornitore",l:"Fornitore"},{k:"schema",l:"N° schema elettrico",code:1},{k:"appar",l:"N° Apparecchiatura",code:1}]},
+  {id:"alim", t:"Power supply drive", campi:[
+    {k:"n",l:"N° power supply",type:"sel",opts:["","1","2","3","4","5","6"]}]},
 ];
 
 // Checklist. voce = stringa | {desc, sel:[...], oscurabile, noNote, extra:[{k,l,code}]}
@@ -503,11 +501,12 @@ const COMPONENTI = [
 //   noNote     → riga con solo Esito + Tecnico (niente campo Valore/note)
 //   extra      → campi valore aggiuntivi a piena larghezza (es. M1/M2 per angolo)
 // sezione con dynamic:true → voci fisse + righe "richiesta particolare" aggiungibili dall'utente
+// soloFascio:true (su sezione o voce) → la riga esiste solo col "Caricatore da fascio" (sez. 1); col caricatore a catena sparisce
 const CHECKLIST = [
   {id:"prelim", t:"Operazioni preliminari", voci:[
     "Verifica Distinta Macchina","Controllo fasi di alimentazione","Chiusura fusibili e verifica tensioni",
     "Nodo schede ausiliarie","Impostazione timer reset sicurezze","Collegamento aria",
-    "Pressostato aria a 7 bar","Messa in bolla macchina","Impostazioni pompette grasso","Impostazioni LAN (indirizzo IP)"]},
+    "Pressostato aria a 7 bar","Messa in bolla macchina","Impostazioni LAN (indirizzo IP)"]},
   {id:"sw", t:"Installazione software", voci:[
     "Autosetup CN"]},
   {id:"testio", t:"Test I/O", voci:[
@@ -515,9 +514,9 @@ const CHECKLIST = [
     "Test uscite (O) — elettrovalvole, spie, attuatori"]},
   {id:"movim", t:"Prima movimentazione", perAsse:true, voci:[
     "Verifica senso rotazione","Accoppiamento (meccanico)","Velocità dal CN","Fattore di conversione",
-    "Taratura asse reale","Finecorsa asse reale","Inversioni asse virtuale","Finecorsa asse virtuale",
+    "Taratura asse reale","Finecorsa asse reale","Finecorsa asse virtuale",
     "Prova massima velocità"]},
-  {id:"eb80", t:"Valvole EB80", perGruppo:["EB80_1","EB80_2"], voci:[
+  {id:"eb80", t:"Valvole EB80", soloFascio:true, perGruppo:["EB80_1","EB80_2"], voci:[
     "Indirizzamento isola EB80","Test elettrovalvole","Verifica tenuta / pressione"]},
   {id:"finitura", t:"Finitura", voci:[
     "Numeri valvole e targhette","Backup su server","Pulizia quadro elettrico","Condizionatore quadro elettrico",
@@ -530,12 +529,12 @@ const CHECKLIST = [
     "Riparo mobile caricatore",
     "Emergenza dedicata caricatore",
     "Anti-caduta barre"]},
-  {id:"caricatore", t:"Misurazione tubo", voci:[
+  {id:"caricatore", t:"Misurazione tubo", soloFascio:true, voci:[
     "Taratura sensore di misurazione lunghezza tubo"]},
   {id:"ciclo", t:"Ciclo e interfaccia col laser", voci:[
     "Prova ciclo di carico automatico completo (prelievo barra → traslazione → inserimento nel mandrino)",
     "Sincronizzazione / handshake con la macchina laser (richiesta barra, barra pronta, consenso ciclo, allarmi incrociati)",
-    "Singolarizzazione barre (una barra per volta, nessun doppio prelievo)",
+    {desc:"Singolarizzazione barre (una barra per volta, nessun doppio prelievo)", soloFascio:true},
     "Centraggio / allineamento barra col mandrino",
     "Tempo ciclo di carico (misura)",
     "Prova di autonomia (N cicli ripetuti senza intervento)"]},
@@ -545,7 +544,6 @@ const CHECKLIST = [
     "Dimensione minima caricabile (dati commerciali)",
     "Dimensione massima caricabile (dati commerciali)"]},
   {id:"consegna", t:"Documentazione e consegna", voci:[
-    "Verifica targa CE e marcatura dati macchina",
     "Consegna documentazione e manuale d'uso"]},
 ];
 
@@ -624,9 +622,29 @@ function fieldEl(path, f){
 /* ====== RENDER: ASSI ====== */
 function renderAxes(){
   const box=document.getElementById("axisChips"); box.innerHTML="";
-  state.assi.forEach(a=> box.appendChild(el(`<span class="chip">${esc(a)}<button title="Rimuovi" data-del-axis="${esc(a)}">×</button></span>`)));
+  const n=state.assi.length;
+  state.assi.forEach((a,i)=> box.appendChild(el(`<span class="chip" draggable="true" data-axis-idx="${i}">`+
+    `<button class="mv no-print" title="Sposta prima" data-mv-axis="${i}:-1" ${i===0?"disabled":""}>◀</button>${esc(a)}`+
+    `<button class="mv no-print" title="Sposta dopo" data-mv-axis="${i}:1" ${i===n-1?"disabled":""}>▶</button>`+
+    `<button title="Rimuovi" data-del-axis="${esc(a)}">×</button></span>`)));
   document.getElementById("numAssi").value = state.assi.length;
 }
+/* Sposta l'asse da from a to. I dati drive/motore/movimentazione sono per NOME asse: l'ordine cambia, i valori restano. */
+function moveAxis(from, to){
+  if(from===to || from<0 || to<0 || from>=state.assi.length || to>=state.assi.length) return;
+  const [a]=state.assi.splice(from,1); state.assi.splice(to,0,a);
+  renderAxes(); renderComponenti(); renderChecklist(); autosizeAll(); scheduleSave();
+}
+// Drag & drop dei chip (desktop): si rilascia su un altro chip e ci si mette al suo posto
+(function(){
+  const box=document.getElementById("axisChips"); let from=-1;
+  const idxOf=e=>{ const c=e.target.closest && e.target.closest(".chip[data-axis-idx]"); return c? +c.dataset.axisIdx : -1; };
+  box.addEventListener("dragstart", e=>{ from=idxOf(e); if(from<0){ e.preventDefault(); return; } e.dataTransfer.effectAllowed="move"; e.target.closest(".chip").classList.add("dragging"); });
+  box.addEventListener("dragover", e=>{ if(from<0) return; e.preventDefault(); const i=idxOf(e); box.querySelectorAll(".drop-before").forEach(c=>c.classList.remove("drop-before")); if(i>=0 && i!==from) box.children[i].classList.add("drop-before"); });
+  box.addEventListener("dragleave", e=>{ const c=e.target.closest && e.target.closest(".chip"); if(c) c.classList.remove("drop-before"); });
+  box.addEventListener("drop", e=>{ e.preventDefault(); const to=idxOf(e); const f=from; from=-1; if(to>=0) moveAxis(f,to); else renderAxes(); });
+  box.addEventListener("dragend", ()=>{ from=-1; box.querySelectorAll(".dragging,.drop-before").forEach(c=>c.classList.remove("dragging","drop-before")); });
+})();
 
 /* ====== RENDER: COMPONENTI ====== */
 function renderComponenti(){
@@ -662,12 +680,12 @@ function renderComponenti(){
   });
   body.appendChild(drv);
 
-  // Motori per asse (cavo motore + cavo encoder separati)
+  // Motori per asse (un solo "Cavo motore": motore ed encoder viaggiano insieme)
   const mot=el(`<div class="comp"><h3>Motori per asse <span class="tag">${state.assi.length} assi</span></h3></div>`);
   state.assi.forEach(a=>{
     const row=el(`<div class="axis-row"><strong>Asse ${esc(a)}</strong><div class="grid c3" style="margin-top:6px"></div></div>`);
     const g=row.querySelector(".grid");
-    [["modello","Modello"],["serie","N° serie",1],["codice","Code ord.",1],["cavoMot","Cavo motore",1],["cavoEnc","Cavo encoder",1]].forEach(([k,l,code])=>
+    [["modello","Modello"],["serie","N° serie",1],["codice","Code ord.",1],["cavoMot","Cavo motore",1]].forEach(([k,l,code])=>
       g.appendChild(fieldEl(`motore.${a}.${k}`, {l,code})));
     mot.appendChild(row);
   });
@@ -675,24 +693,31 @@ function renderComponenti(){
 }
 
 /* ====== RENDER: CHECKLIST ====== */
+/* Checklist attiva = CHECKLIST senza le sezioni/voci soloFascio quando il caricatore è a catena.
+   Le voci diventano coppie [voce, indiceOriginale]: le chiavi di state.valori restano stabili anche se una voce sparisce. */
+function activeChecklist(){
+  const fascio=isCaricatoreFascio();
+  return CHECKLIST.filter(sec=> fascio || !sec.soloFascio)
+    .map(sec=> ({...sec, voci: sec.voci.map((v,i)=>[v,i]).filter(([v])=> fascio || !(typeof v==="object" && v.soloFascio))}));
+}
 function renderChecklist(){
   const body=document.getElementById("checklistBody"); body.innerHTML="";
-  CHECKLIST.forEach(sec=>{
+  activeChecklist().forEach(sec=>{
     const blk=el(`<div class="sec-group"><h3>${esc(sec.t)}</h3></div>`);
     if(sec.perAsse){
       state.assi.forEach(a=>{
         const sub=el(`<div class="axis-sub"><h4>Asse ${esc(a)}</h4></div>`);
-        sec.voci.forEach((v,i)=> sub.appendChild(buildCheck(`${sec.id}.${a}.${i}`, v)));
+        sec.voci.forEach(([v,i])=> sub.appendChild(buildCheck(`${sec.id}.${a}.${i}`, v)));
         blk.appendChild(sub);
       });
     } else if(sec.perGruppo){
       sec.perGruppo.forEach(grp=>{
         const sub=el(`<div class="axis-sub"><h4>${esc(grp)}</h4></div>`);
-        sec.voci.forEach((v,i)=> sub.appendChild(buildCheck(`${sec.id}.${grp}.${i}`, v)));
+        sec.voci.forEach(([v,i])=> sub.appendChild(buildCheck(`${sec.id}.${grp}.${i}`, v)));
         blk.appendChild(sub);
       });
     } else {
-      sec.voci.forEach((v,i)=> blk.appendChild(buildCheck(`${sec.id}.${i}`, v)));
+      sec.voci.forEach(([v,i])=> blk.appendChild(buildCheck(`${sec.id}.${i}`, v)));
       if(sec.dynamic){
         const extra = (state.extraVoci && state.extraVoci[sec.id]) || [];
         extra.forEach((label,i)=>{
@@ -781,13 +806,9 @@ function lockRow(key){
   row.querySelectorAll('textarea[data-vk], select.opt').forEach(el=>{ el.disabled=locked; });
 }
 function countChecks(){
+  // conta solo le righe attive: un esito dato a una voce soloFascio non deve restare nel "fatto" dopo il passaggio a catena
   let total=0, done=0;
-  CHECKLIST.forEach(sec=>{
-    const mult = sec.perAsse?state.assi.length : (sec.perGruppo?sec.perGruppo.length:1);
-    total += sec.voci.length*mult;
-    if(sec.dynamic && state.extraVoci && state.extraVoci[sec.id]) total += state.extraVoci[sec.id].length;
-  });
-  Object.values(state.valori).forEach(v=>{ if(v && (v.esito||v.off)) done++; });
+  eachCheckKey(k=>{ total++; const v=state.valori[k]; if(v && (v.esito||v.off)) done++; });
   return {total,done};
 }
 function updateProgress(){
@@ -796,7 +817,8 @@ function updateProgress(){
   p.textContent=`${done}/${total}`; p.classList.toggle("done", total>0&&done>=total);
 }
 
-/* La lunghezza caricatore serve solo per il "Caricatore da fascio": la mostra/nasconde e la azzera se a catena */
+/* La lunghezza caricatore serve solo per il "Caricatore da fascio": la mostra/nasconde e la azzera se a catena.
+   Ricostruisce anche la checklist (le sezioni/voci soloFascio compaiono o spariscono) e la testata delle prove. */
 function isCaricatoreFascio(){ return (getVal("testata.tipo_caricatore")||"")==="Caricatore da fascio"; }
 function updateCaricatore(){
   const fascio=isCaricatoreFascio();
@@ -806,6 +828,8 @@ function updateCaricatore(){
     setVal("testata.lunghezza_caricatore","");
     const sel=document.querySelector('[data-path="testata.lunghezza_caricatore"]'); if(sel) sel.value="";
   }
+  const tc=document.getElementById("proveTipoCarico"); if(tc) tc.textContent=getVal("testata.tipo_caricatore")||"—";
+  renderChecklist(); autosizeAll();
 }
 
 /* ====== GATING A CASCATA (1→2→3→4/5) ====== */
@@ -1053,11 +1077,11 @@ const REQUIRED = [
 ];
 /* itera ogni riga di checklist con la sua chiave e l'ambito leggibile */
 function eachCheckKey(cb){
-  CHECKLIST.forEach(sec=>{
-    if(sec.perAsse){ state.assi.forEach(a=> sec.voci.forEach((vc,i)=> cb(`${sec.id}.${a}.${i}`, descOf(vc), `${sec.t} · Asse ${a}`))); }
-    else if(sec.perGruppo){ sec.perGruppo.forEach(grp=> sec.voci.forEach((vc,i)=> cb(`${sec.id}.${grp}.${i}`, descOf(vc), `${sec.t} · ${grp}`))); }
+  activeChecklist().forEach(sec=>{
+    if(sec.perAsse){ state.assi.forEach(a=> sec.voci.forEach(([vc,i])=> cb(`${sec.id}.${a}.${i}`, descOf(vc), `${sec.t} · Asse ${a}`))); }
+    else if(sec.perGruppo){ sec.perGruppo.forEach(grp=> sec.voci.forEach(([vc,i])=> cb(`${sec.id}.${grp}.${i}`, descOf(vc), `${sec.t} · ${grp}`))); }
     else {
-      sec.voci.forEach((vc,i)=> cb(`${sec.id}.${i}`, descOf(vc), sec.t));
+      sec.voci.forEach(([vc,i])=> cb(`${sec.id}.${i}`, descOf(vc), sec.t));
       if(sec.dynamic && state.extraVoci && state.extraVoci[sec.id]) state.extraVoci[sec.id].forEach((lbl,i)=> cb(`${sec.id}.dyn.${i}`, lbl, sec.t));
     }
   });
@@ -1118,12 +1142,12 @@ function exportCsv(){
   L.push("COLLAUDO LASER — WARCOM");
   L.push(csvRow(["Campo","Valore"]));
   [["Modello",t.modello],["Matricola",t.matricola],["Cliente",t.cliente],["Commessa",t.commessa],
-   ["Collaudatore",t.collaudatore],["Norma",t.norma],["Lingua",t.lingua],
+   ["Collaudatore",t.collaudatore],["Tipo caricatore",t.tipo_caricatore],["Lunghezza caricatore",t.lunghezza_caricatore],["Norma",t.norma],["Lingua",t.lingua],
    ["Inizio",t.inizio],["Fine",t.fine],["N° assi",state.assi.length]].forEach(r=>L.push(csvRow(r)));
   L.push("");
   L.push("CHECKLIST");
   L.push(csvRow(["Sezione","Voce","Asse/Gruppo","Esito","Tecnico","Valore/Note","Opzione"]));
-  CHECKLIST.forEach(sec=>{
+  activeChecklist().forEach(sec=>{
     const emit=(key,desc,scope)=>{
       const v=state.valori[key]||{};
       const esito = v.off ? "non presente" : (ES[v.esito]||"");
@@ -1131,10 +1155,10 @@ function exportCsv(){
       if(v.extra){ const ex=Object.entries(v.extra).filter(([,x])=>x).map(([k,x])=>`${k}=${x}`).join(" · "); if(ex) note = note?`${note} · ${ex}`:ex; }
       L.push(csvRow([sec.t, desc, scope||"", esito, v.tecnico||"", note, v.opt||""]));
     };
-    if(sec.perAsse){ state.assi.forEach(a=> sec.voci.forEach((vc,i)=> emit(`${sec.id}.${a}.${i}`, descOf(vc), "Asse "+a))); }
-    else if(sec.perGruppo){ sec.perGruppo.forEach(grp=> sec.voci.forEach((vc,i)=> emit(`${sec.id}.${grp}.${i}`, descOf(vc), grp))); }
+    if(sec.perAsse){ state.assi.forEach(a=> sec.voci.forEach(([vc,i])=> emit(`${sec.id}.${a}.${i}`, descOf(vc), "Asse "+a))); }
+    else if(sec.perGruppo){ sec.perGruppo.forEach(grp=> sec.voci.forEach(([vc,i])=> emit(`${sec.id}.${grp}.${i}`, descOf(vc), grp))); }
     else {
-      sec.voci.forEach((vc,i)=> emit(`${sec.id}.${i}`, descOf(vc), ""));
+      sec.voci.forEach(([vc,i])=> emit(`${sec.id}.${i}`, descOf(vc), ""));
       if(sec.dynamic && state.extraVoci && state.extraVoci[sec.id]) state.extraVoci[sec.id].forEach((lbl,i)=> emit(`${sec.id}.dyn.${i}`, lbl, "richiesta commessa"));
     }
   });
@@ -1142,7 +1166,6 @@ function exportCsv(){
   L.push("PROVE DI CARICO");
   L.push(csvRow(["N","Profilo","Dimensione","Spessore (mm)","Lunghezza (mm)","N° barre sul caricatore","Esito","Note","Foto"]));
   state.prove.forEach((p,i)=> L.push(csvRow([i+1, p.profilo, p.dimensione, p.spessore, p.lunghezza, p.barre, p.esito, p.note, (p.foto||[]).length])));
-  if(state.prove_extra && state.prove_extra.tipo_carico){ L.push(""); L.push(csvRow(["Tipo di carico", state.prove_extra.tipo_carico])); }
   if(state.note){ L.push(""); L.push(csvRow(["Note di collaudo", state.note])); }
   const csv="\ufeff"+L.join("\r\n");
   const blob=new Blob([csv], {type:"text/csv;charset=utf-8"});  // BOM iniziale = accenti corretti in Excel
@@ -1177,6 +1200,7 @@ document.addEventListener("click", e=>{
   const t=e.target;
   if(t.id==="btnTodo"){ todoOn=!todoOn; try{ localStorage.setItem(TODO_KEY, todoOn?"1":"0"); }catch(err){} refreshTodo(); return; }
   if(t.closest && t.closest(".esito") && t.dataset.v){ setEsito(t.closest(".check").dataset.key, t.dataset.v); }
+  else if(t.dataset.mvAxis!==undefined){ const [i,d]=t.dataset.mvAxis.split(":").map(Number); moveAxis(i, i+d); }
   else if(t.dataset.delAxis!==undefined){
     const a=t.dataset.delAxis;
     if(confirm(`Rimuovere l'asse ${a}? Si perdono i dati drive/motore/movimentazione di quell'asse.`)){
