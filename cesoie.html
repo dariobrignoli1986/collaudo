@@ -151,6 +151,18 @@
   .chip button{border:none; background:#d6e0ea; color:var(--accent-ink); width:26px; height:26px; border-radius:999px;
     cursor:pointer; font-size:16px; line-height:1; display:grid; place-items:center}
   .chip button:hover{background:var(--ko-bg); color:var(--ko)}
+  .chip button.mv{background:transparent; font-size:13px} .chip button.mv:hover{background:#d6e0ea; color:var(--accent-ink)}
+  .chip button.mv:disabled{opacity:.25; cursor:default; background:transparent}
+  .chip[draggable="true"]{cursor:grab} .chip.dragging{opacity:.4} .chip.drop-before{box-shadow:-3px 0 0 var(--accent)}
+  @media (max-width:760px){ .chip button{width:40px; height:40px} }
+  .ps-lane{border:1px dashed var(--line-strong); border-radius:10px; padding:var(--s2); margin-bottom:var(--s2); min-height:52px}
+  .ps-lane > h4{margin:0 0 var(--s1); font:700 13px/1.2 var(--mono); color:var(--accent-ink)}
+  .ps-lane .chips{margin-bottom:0} .ps-lane.drop-lane{background:#eef3f8; border-style:solid}
+  .ps-lane.altri{border-color:var(--line)}
+  .chip select.tipo{font:600 12px/1 var(--mono); color:var(--accent-ink); background:#fff; border:1px solid var(--line-strong); border-radius:6px; padding:4px 4px; min-height:26px; cursor:pointer}
+  @media (max-width:760px){ .chip select.tipo{min-height:40px; font-size:14px} }
+  @media print{ .chip select.tipo{border:none; background:none; padding:0; appearance:none; -webkit-appearance:none} }
+  .ps-head{margin:var(--s2) 0 var(--s1); font:700 13px/1.2 var(--mono); color:var(--accent-ink); border-bottom:1px solid var(--line); padding-bottom:4px}
   .add-axis{display:flex; gap:var(--s1); max-width:380px}
   .add-axis input{flex:1; font:inherit; padding:9px 10px; border:1px solid var(--line-strong); border-radius:6px; min-height:44px}
 
@@ -309,7 +321,7 @@
   <div class="toolbar-in"><svg class="wlogo" viewBox="0 0 760 245"><use href="#wlogo"/></svg>
     <div class="tb-right">
       <div class="tb-titlerow">
-        <h1>Collaudo Cesoie <span>· Warcom · V0.9 (bozza)</span></h1>
+        <h1>Collaudo Cesoie <span>· Warcom · V0.10 (bozza)</span></h1>
         <span class="save-state" id="saveState">—</span>
       </div>
       <div class="tb-actions">
@@ -366,7 +378,10 @@
     <h2><span class="num">2</span> Configurazione assi</h2>
     <p class="gate-msg"><span class="lk">🔒</span> <span>Compila la <strong>Testata commessa</strong> (sezione 1, tutti i campi tranne <em>Fine collaudo</em>) per sbloccare gli assi.</span></p>
     <div class="card-body">
-      <p class="hint">Gli assi qui definiti generano automaticamente i blocchi <strong>Drive</strong>, <strong>Motori</strong> e la sezione <strong>Prima movimentazione</strong>; il numero assi in testata si aggiorna da solo.</p>
+      <p class="hint">Gli assi qui definiti generano automaticamente i blocchi <strong>Drive</strong>, <strong>Motori</strong> e la sezione <strong>Prima movimentazione</strong>; il numero assi in testata si aggiorna da solo.<br><strong>Mettili nell'ordine di collegamento</strong> (trascina i chip, o usa ◀ ▶): drive e motori si presentano in quest'ordine.<br><strong>Tipo di asse</strong> (menu sul chip, o trascinalo nella corsia giusta): <strong>ED4</strong> = drive integrato nel motore, alimentato da un power supply, cavo motore unico · <strong>EBS</strong> = classico, drive + motore, cavo motore + cavo encoder · <strong>Inverter</strong> = inverter al posto del drive, senza firmware.</p>
+      <div class="field no-print" style="max-width:220px;margin-bottom:var(--s2)"><label>N° power supply</label>
+        <select data-path="psN"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select>
+      </div>
       <div class="chips" id="axisChips"></div>
       <div class="add-axis no-print">
         <input id="newAxis" placeholder="Nuovo asse (es. RC1)">
@@ -540,7 +555,7 @@ const DEFAULT_ASSI = ["U","C1","C2","X","Z","Y","RC1","RC2","RC3","RC4","SC","RS
 let state = loadState();
 
 function freshState(){
-  return { testata:{norma:"CE"}, assi:[...DEFAULT_ASSI], assiConfirmed:false, drive:{}, motore:{}, comp:{}, telecamere:[{}],
+  return { testata:{norma:"CE"}, assi:[...DEFAULT_ASSI], assiConfirmed:false, psN:1, assiPs:{}, assiTipo:{}, inverter:{}, powersupply:{}, drive:{}, motore:{}, comp:{}, telecamere:[{}],
            valori:{}, extraVoci:{}, prove:[{foto:[]}], prove_extra:{}, note:"" };
 }
 function migrate(s){ // collaudatore unifica il vecchio "compilato da"
@@ -605,13 +620,97 @@ function fieldEl(path, f){
 }
 
 /* ====== RENDER: ASSI ====== */
+/* ====== TIPO ASSE + POWER SUPPLY: corsie di assi ======
+   state.assiTipo[asse] = "ED4" | "EBS" | "INV" (default EBS = classico).
+   Solo gli ED4 stanno sotto un power supply: state.psN = quanti, state.assiPs[asse] = quale (1..psN).
+   Corsie a video: PS1..PSn (assi ED4) + "Altri assi" (EBS / inverter). L'ORDINE dentro ogni corsia è quello di state.assi.
+   La corsia decide il tipo: trascinare un asse in PS2 lo rende ED4 su PS2; trascinarlo in "Altri" lo rende EBS (un inverter resta inverter). */
+const TIPI_ASSE=[["EBS","EBS"],["ED4","ED4"],["INV","Inverter"]];
+function tipoOf(a){ const t=(state.assiTipo||{})[a]; return t==="ED4"||t==="INV" ? t : "EBS"; }
+function tipoLabel(a){ return (TIPI_ASSE.find(([k])=>k===tipoOf(a))||[])[1]||"EBS"; }
+function setTipo(a,t){ if(!state.assiTipo) state.assiTipo={}; state.assiTipo[a]=t; }
+function psCount(){ return Math.max(1, Math.min(6, +(state.psN||1))); }
+function psOf(a){ return Math.max(1, Math.min(psCount(), +((state.assiPs||{})[a]||1))); }
+function setPs(a,k){ if(!state.assiPs) state.assiPs={}; state.assiPs[a]=k; }
+/* corsie ED4: L[k-1] = assi del power supply k */
+function psLanes(){ const L=Array.from({length:psCount()},()=>[]); state.assi.forEach(a=>{ if(tipoOf(a)==="ED4") L[psOf(a)-1].push(a); }); return L; }
+function altriAssi(){ return state.assi.filter(a=> tipoOf(a)!=="ED4"); }
+/* tutte le corsie, nell'ordine di presentazione: [PS1..PSn, Altri]; l'indice n è "Altri" */
+function allLanes(){ return [...psLanes(), altriAssi()]; }
+function laneIdxOf(a){ return tipoOf(a)==="ED4" ? psOf(a)-1 : psCount(); }
+/* Assegna l'asse a una corsia (0..n-1 = power supply, n = altri) e ne deriva il tipo */
+function laneAssign(a,k){ if(k<psCount()){ setTipo(a,"ED4"); setPs(a,k+1); } else if(tipoOf(a)==="ED4") setTipo(a,"EBS"); }
+/* Sequenza lineare = corsie concatenate: è l'ordine in cui drive, inverter e motori vengono presentati */
+function assiOrdinati(){ return allLanes().flat(); }
+
 function renderAxes(){
   const box=document.getElementById("axisChips"); box.innerHTML="";
-  state.assi.forEach(a=> box.appendChild(el(`<span class="chip">${esc(a)}<button title="Rimuovi" data-del-axis="${esc(a)}">×</button></span>`)));
+  const lanes=allLanes(), n=psCount(), seq=assiOrdinati();
+  const sel=document.querySelector('[data-path="psN"]'); if(sel) sel.value=String(n);
+  const chip=a=>{ const i=seq.indexOf(a); const t=tipoOf(a);
+    return el(`<span class="chip" draggable="true" data-axis="${esc(a)}">`+
+    `<button class="mv no-print" title="Sposta prima" data-mv-axis="${esc(a)}:-1" ${i===0?"disabled":""}>◀</button>${esc(a)}`+
+    `<select class="tipo" draggable="false" title="Tipo asse" data-tipo-axis="${esc(a)}">${TIPI_ASSE.map(([k,l])=>`<option value="${k}" ${k===t?"selected":""}>${l}</option>`).join("")}</select>`+
+    `<button class="mv no-print" title="Sposta dopo" data-mv-axis="${esc(a)}:1" ${i===seq.length-1?"disabled":""}>▶</button>`+
+    `<button title="Rimuovi" data-del-axis="${esc(a)}">×</button></span>`); };
+  lanes.forEach((lane,k)=>{
+    const altri=k===n;
+    const title= altri ? "Altri assi <small>(EBS / inverter)</small>" : `Power supply ${k+1} <small>(assi ED4)</small>`;
+    const ln=el(`<div class="ps-lane${altri?" altri":""}" data-lane="${k}"><h4>${title} <span class="tag">${lane.length} assi</span></h4><div class="chips"></div></div>`);
+    const c=ln.querySelector(".chips"); lane.forEach(a=> c.appendChild(chip(a)));
+    if(!lane.length) c.appendChild(el(`<span class="hint no-print" style="margin:0">${altri?"Trascina qui gli assi EBS o con inverter":"Trascina qui gli assi ED4 di questo alimentatore"}</span>`));
+    box.appendChild(ln);
+  });
   document.getElementById("numAssi").value = state.assi.length;
 }
+function afterAxesChange(){ renderAxes(); renderComponenti(); renderChecklist(); autosizeAll(); scheduleSave(); }
+/* Mette l'asse a subito prima (before=true) o dopo l'asse b, nella corsia di b. I dati sono per NOME asse: restano. */
+function placeAxis(a, b, before){
+  if(a===b) return;
+  state.assi.splice(state.assi.indexOf(a),1);
+  const j=state.assi.indexOf(b); state.assi.splice(before? j : j+1, 0, a);
+  laneAssign(a, laneIdxOf(b)); afterAxesChange();
+}
+/* Mette l'asse in coda alla corsia k */
+function appendToLane(a,k){ state.assi.splice(state.assi.indexOf(a),1); state.assi.push(a); laneAssign(a,k); afterAxesChange(); }
+/* Frecce: un passo nella sequenza lineare; al bordo di una corsia si passa in quella accanto (anche se vuota). */
+function moveAxis(a, d){
+  const lanes=allLanes(), k=laneIdxOf(a), lane=lanes[k], p=lane.indexOf(a);
+  const q=p+d;
+  if(q>=0 && q<lane.length){ placeAxis(a, lane[q], d<0); return; }
+  const k2=k+d; if(k2<0 || k2>=lanes.length) return;
+  const dest=lanes[k2];
+  if(!dest.length){ laneAssign(a,k2); afterAxesChange(); }
+  else placeAxis(a, d>0? dest[0] : dest[dest.length-1], d>0);
+}
+// Drag & drop (desktop): su un chip → ci si mette prima, nella sua corsia; su una corsia vuota/libera → in coda a quella corsia
+(function(){
+  const box=document.getElementById("axisChips"); let from=null;
+  const chipOf=e=> e.target.closest && e.target.closest(".chip[data-axis]");
+  const laneOf=e=> e.target.closest && e.target.closest(".ps-lane");
+  const clear=()=> box.querySelectorAll(".drop-before,.drop-lane").forEach(c=>c.classList.remove("drop-before","drop-lane"));
+  box.addEventListener("dragstart", e=>{ const c=chipOf(e); if(!c || e.target.tagName==="SELECT"){ e.preventDefault(); return; } from=c.dataset.axis; e.dataTransfer.effectAllowed="move"; c.classList.add("dragging"); });
+  box.addEventListener("dragover", e=>{ if(from==null) return; e.preventDefault(); clear(); const c=chipOf(e), ln=laneOf(e); if(c && c.dataset.axis!==from) c.classList.add("drop-before"); else if(!c && ln) ln.classList.add("drop-lane"); });
+  box.addEventListener("drop", e=>{ e.preventDefault(); const a=from; from=null; clear(); if(a==null) return;
+    const c=chipOf(e), ln=laneOf(e);
+    if(c){ placeAxis(a, c.dataset.axis, true); }
+    else if(ln){ appendToLane(a, +ln.dataset.lane); }
+    else renderAxes(); });
+  box.addEventListener("dragend", ()=>{ from=null; clear(); box.querySelectorAll(".dragging").forEach(c=>c.classList.remove("dragging")); });
+})();
 
 /* ====== RENDER: COMPONENTI ====== */
+/* Chiama rowOf(asse) per gli assi che passano il filtro, nell'ordine delle corsie; intestazione per power supply (solo ED4) */
+function perLane(blk, filtro, rowOf){
+  const lanes=allLanes(), n=psCount();
+  lanes.forEach((lane,k)=>{
+    const assi=lane.filter(filtro); if(!assi.length) return;
+    if(k<n) blk.appendChild(el(`<div class="ps-head">Power supply ${k+1} <span class="tag">${assi.length} assi ED4</span></div>`));
+    else if(n>0 && lanes.slice(0,n).some(l=>l.some(filtro))) blk.appendChild(el(`<div class="ps-head">Altri assi <span class="tag">${assi.length}</span></div>`));
+    assi.forEach(a=> blk.appendChild(rowOf(a)));
+  });
+}
+function axisRow(a, cols){ return el(`<div class="axis-row"><strong>Asse ${esc(a)} <span class="tag">${esc(tipoLabel(a))}</span></strong><div class="grid c${cols}" style="margin-top:6px"></div></div>`); }
 function renderComponenti(){
   const body=document.getElementById("componentiBody"); body.innerHTML="";
   COMPONENTI.forEach(c=>{
@@ -649,25 +748,55 @@ function renderComponenti(){
   tcBlk.appendChild(el(`<button class="btn btn-accent no-print" id="btnAddTc" style="margin-top:6px">+ Aggiungi telecamera</button>`));
   body.appendChild(tcBlk);
 
-  // Drive per asse
-  const drv=el(`<div class="comp"><h3>Drive per asse <span class="tag">${state.assi.length} assi</span></h3></div>`);
-  state.assi.forEach(a=>{
-    const row=el(`<div class="axis-row"><strong>Asse ${esc(a)}</strong><div class="grid c4" style="margin-top:6px"></div></div>`);
-    const g=row.querySelector(".grid");
-    [["modello","Modello"],["fw","Firmware",1],["serie","N° serie",1],["codice","Code ord.",1]].forEach(([k,l,code])=>
-      g.appendChild(fieldEl(`drive.${a}.${k}`, {l,code})));
-    drv.appendChild(row);
-  });
-  body.appendChild(drv);
+  const nEBS=state.assi.filter(a=>tipoOf(a)==="EBS").length, nINV=state.assi.filter(a=>tipoOf(a)==="INV").length;
 
-  // Motori per asse (cavo motore + cavo encoder separati)
+  // Power supply: una riga per alimentatore (solo se ci sono assi ED4: sono gli unici a usarli)
+  const lanesED4=psLanes();
+  if(lanesED4.some(l=>l.length)){
+    const ps=el(`<div class="comp"><h3>Power supply <span class="tag">${lanesED4.length}</span></h3></div>`);
+    lanesED4.forEach((lane,k)=>{
+      const row=el(`<div class="axis-row"><strong>Power supply ${k+1} <span class="tag">${lane.length? "assi "+lane.map(esc).join(" · ") : "nessun asse"}</span></strong><div class="grid c3" style="margin-top:6px"></div></div>`);
+      const g=row.querySelector(".grid");
+      [["modello","Modello"],["serie","N° serie",1],["codice","Code ord.",1]].forEach(([k2,l,code])=>
+        g.appendChild(fieldEl(`powersupply.${k+1}.${k2}`, {l,code})));
+      ps.appendChild(row);
+    });
+    body.appendChild(ps);
+  }
+
+  // Drive per asse: solo assi EBS (gli ED4 hanno il drive nel motore, gli inverter hanno l'inverter)
+  if(nEBS){
+    const drv=el(`<div class="comp"><h3>Drive per asse <span class="tag">${nEBS} assi EBS</span></h3></div>`);
+    perLane(drv, a=>tipoOf(a)==="EBS", a=>{
+      const row=axisRow(a,4), g=row.querySelector(".grid");
+      [["modello","Modello"],["fw","Firmware",1],["serie","N° serie",1],["codice","Code ord.",1]].forEach(([k,l,code])=>
+        g.appendChild(fieldEl(`drive.${a}.${k}`, {l,code})));
+      return row;
+    });
+    body.appendChild(drv);
+  }
+
+  // Inverter per asse: al posto del drive, senza firmware
+  if(nINV){
+    const inv=el(`<div class="comp"><h3>Inverter per asse <span class="tag">${nINV} assi</span></h3></div>`);
+    perLane(inv, a=>tipoOf(a)==="INV", a=>{
+      const row=axisRow(a,3), g=row.querySelector(".grid");
+      [["modello","Modello"],["serie","N° serie",1],["codice","Code ord.",1]].forEach(([k,l,code])=>
+        g.appendChild(fieldEl(`inverter.${a}.${k}`, {l,code})));
+      return row;
+    });
+    body.appendChild(inv);
+  }
+
+  // Motori per asse: tutti. Cavo encoder solo sugli EBS (ED4 e inverter: cavo motore unico)
   const mot=el(`<div class="comp"><h3>Motori per asse <span class="tag">${state.assi.length} assi</span></h3></div>`);
-  state.assi.forEach(a=>{
-    const row=el(`<div class="axis-row"><strong>Asse ${esc(a)}</strong><div class="grid c3" style="margin-top:6px"></div></div>`);
-    const g=row.querySelector(".grid");
-    [["modello","Modello"],["serie","N° serie",1],["codice","Code ord.",1],["cavoMot","Cavo motore",1],["cavoEnc","Cavo encoder",1]].forEach(([k,l,code])=>
-      g.appendChild(fieldEl(`motore.${a}.${k}`, {l,code})));
-    mot.appendChild(row);
+  perLane(mot, ()=>true, a=>{
+    const ebs=tipoOf(a)==="EBS";
+    const row=axisRow(a, ebs?3:4), g=row.querySelector(".grid");
+    const campi=[["modello","Modello"],["serie","N° serie",1],["codice","Code ord.",1],["cavoMot","Cavo motore",1]];
+    if(ebs) campi.push(["cavoEnc","Cavo encoder",1]);
+    campi.forEach(([k,l,code])=> g.appendChild(fieldEl(`motore.${a}.${k}`, {l,code})));
+    return row;
   });
   body.appendChild(mot);
 }
@@ -678,7 +807,7 @@ function renderChecklist(){
   CHECKLIST.forEach(sec=>{
     const blk=el(`<div class="sec-group"><h3>${esc(sec.t)}</h3></div>`);
     if(sec.perAsse){
-      state.assi.forEach(a=>{
+      assiOrdinati().forEach(a=>{
         const sub=el(`<div class="axis-sub"><h4>Asse ${esc(a)}</h4></div>`);
         sec.voci.forEach((v,i)=> sub.appendChild(buildCheck(`${sec.id}.${a}.${i}`, v)));
         blk.appendChild(sub);
@@ -1035,7 +1164,7 @@ const REQUIRED = [
 /* itera ogni riga di checklist con la sua chiave e l'ambito leggibile */
 function eachCheckKey(cb){
   CHECKLIST.forEach(sec=>{
-    if(sec.perAsse){ state.assi.forEach(a=> sec.voci.forEach((vc,i)=> cb(`${sec.id}.${a}.${i}`, descOf(vc), `${sec.t} · Asse ${a}`))); }
+    if(sec.perAsse){ assiOrdinati().forEach(a=> sec.voci.forEach((vc,i)=> cb(`${sec.id}.${a}.${i}`, descOf(vc), `${sec.t} · Asse ${a}`))); }
     else if(sec.perGruppo){ sec.perGruppo.forEach(grp=> sec.voci.forEach((vc,i)=> cb(`${sec.id}.${grp}.${i}`, descOf(vc), `${sec.t} · ${grp}`))); }
     else {
       sec.voci.forEach((vc,i)=> cb(`${sec.id}.${i}`, descOf(vc), sec.t));
@@ -1100,7 +1229,9 @@ function exportCsv(){
   L.push(csvRow(["Campo","Valore"]));
   [["Modello",t.modello],["Matricola",t.matricola],["Cliente",t.cliente],["Commessa",t.commessa],
    ["Collaudatore",t.collaudatore],["Norma",t.norma],["Lingua",t.lingua],
-   ["Inizio",t.inizio],["Fine",t.fine],["N° assi",state.assi.length]].forEach(r=>L.push(csvRow(r)));
+   ["Inizio",t.inizio],["Fine",t.fine],["N° assi",state.assi.length],["N° power supply",psCount()],
+   ["Tipo assi", state.assi.map(a=>`${a}:${tipoLabel(a)}`).join(" ")],
+   ["Assi ED4 per power supply", psLanes().map((l,k)=>`PS${k+1}: ${l.join(" ")||"—"}`).join(" | ")]].forEach(r=>L.push(csvRow(r)));
   L.push("");
   L.push("CHECKLIST");
   L.push(csvRow(["Sezione","Voce","Asse/Gruppo","Esito","Tecnico","Valore/Note","Opzione"]));
@@ -1112,7 +1243,7 @@ function exportCsv(){
       if(v.extra){ const ex=Object.entries(v.extra).filter(([,x])=>x).map(([k,x])=>`${k}=${x}`).join(" · "); if(ex) note = note?`${note} · ${ex}`:ex; }
       L.push(csvRow([sec.t, desc, scope||"", esito, v.tecnico||"", note, v.opt||""]));
     };
-    if(sec.perAsse){ state.assi.forEach(a=> sec.voci.forEach((vc,i)=> emit(`${sec.id}.${a}.${i}`, descOf(vc), "Asse "+a))); }
+    if(sec.perAsse){ assiOrdinati().forEach(a=> sec.voci.forEach((vc,i)=> emit(`${sec.id}.${a}.${i}`, descOf(vc), "Asse "+a))); }
     else if(sec.perGruppo){ sec.perGruppo.forEach(grp=> sec.voci.forEach((vc,i)=> emit(`${sec.id}.${grp}.${i}`, descOf(vc), grp))); }
     else {
       sec.voci.forEach((vc,i)=> emit(`${sec.id}.${i}`, descOf(vc), ""));
@@ -1134,7 +1265,10 @@ function exportCsv(){
 document.addEventListener("input", e=>{
   const t=e.target;
   if(t.classList && t.classList.contains("invalid")) t.classList.remove("invalid");
-  if(t.dataset.path!==undefined){ setVal(t.dataset.path, t.value); if(t.dataset.path.startsWith("testata")) updatePrintHead(); updateGates(); scheduleSave(); }
+  if(t.dataset.path!==undefined){ setVal(t.dataset.path, t.value); if(t.dataset.path.startsWith("testata")) updatePrintHead();
+    if(t.dataset.path==="psN"){ renderAxes(); renderComponenti(); autosizeAll(); }
+    updateGates(); scheduleSave(); }
+  else if(t.dataset.tipoAxis!==undefined){ const a=t.dataset.tipoAxis; setTipo(a, t.value); if(t.value==="ED4" && !(state.assiPs||{})[a]) setPs(a,1); afterAxesChange(); updateGates(); scheduleSave(); }
   else if(t.dataset.vk!==undefined){
     const k=t.dataset.vk; if(!state.valori[k])state.valori[k]={};
     if(t.dataset.ve!==undefined){ if(!state.valori[k].extra)state.valori[k].extra={}; state.valori[k].extra[t.dataset.ve]=t.value; }
@@ -1158,10 +1292,11 @@ document.addEventListener("click", e=>{
   const t=e.target;
   if(t.id==="btnTodo"){ todoOn=!todoOn; try{ localStorage.setItem(TODO_KEY, todoOn?"1":"0"); }catch(err){} refreshTodo(); return; }
   if(t.closest && t.closest(".esito") && t.dataset.v){ setEsito(t.closest(".check").dataset.key, t.dataset.v); }
+  else if(t.dataset.mvAxis!==undefined){ const p=t.dataset.mvAxis.lastIndexOf(":"); moveAxis(t.dataset.mvAxis.slice(0,p), +t.dataset.mvAxis.slice(p+1)); }
   else if(t.dataset.delAxis!==undefined){
     const a=t.dataset.delAxis;
     if(confirm(`Rimuovere l'asse ${a}? Si perdono i dati drive/motore/movimentazione di quell'asse.`)){
-      state.assi=state.assi.filter(x=>x!==a); delete state.drive[a]; delete state.motore[a];
+      state.assi=state.assi.filter(x=>x!==a); delete state.drive[a]; delete state.motore[a]; if(state.inverter) delete state.inverter[a]; if(state.assiPs) delete state.assiPs[a]; if(state.assiTipo) delete state.assiTipo[a];
       Object.keys(state.valori).forEach(k=>{ if(k.startsWith(`movim.${a}.`)) delete state.valori[k]; });
       state.assiConfirmed=false;
       renderAxes(); renderComponenti(); renderChecklist(); updateGates(); autosizeAll(); scheduleSave();
