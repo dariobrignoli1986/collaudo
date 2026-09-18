@@ -1283,7 +1283,7 @@ document.addEventListener("input", e=>{
   if(t.classList && t.classList.contains("invalid")) t.classList.remove("invalid");
   if(t.dataset.path!==undefined){ setVal(t.dataset.path, t.value); if(t.dataset.path.startsWith("testata")){ updatePrintHead(); if(t.dataset.path==="testata.tipo_caricatore") updateCaricatore(); }
     if(t.dataset.path==="psN"){ renderAxes(); renderComponenti(); autosizeAll(); }
-  }
+    updateGates(); scheduleSave(); }
   else if(t.dataset.tipoAxis!==undefined){ const a=t.dataset.tipoAxis; setTipo(a, t.value); if(t.value==="ED4" && !(state.assiPs||{})[a]) setPs(a,1); afterAxesChange(); updateGates(); scheduleSave(); }
   else if(t.dataset.vk!==undefined){
     const k=t.dataset.vk; if(!state.valori[k])state.valori[k]={};
