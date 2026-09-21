@@ -95,6 +95,13 @@
     .check .field textarea{font-size:16px; min-height:44px; padding:9px 10px}
     .esito button{min-height:44px} }
   .check .desc{font-weight:600; align-self:center}
+  .rif{display:inline-block; font:600 11px/1 var(--mono); color:var(--muted); background:var(--na-bg); border-radius:4px; padding:3px 5px; margin-right:6px; vertical-align:middle; white-space:nowrap}
+  .sec-group > h3 .rif{font-size:12px}
+  .axis-sub > h4.pn-head{display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px}
+  .pn-label{font-family:inherit; font-weight:600; font-size:14px; line-height:1.3; color:var(--ink); background:#fff; border:1px solid var(--line-strong); border-radius:6px; padding:9px 10px; flex:1 1 220px; max-width:420px; min-height:44px}
+  .pn-label::placeholder{color:var(--muted); font-weight:500}
+  .pn-label:placeholder-shown{border-color:var(--ko); background:var(--ko-bg)}   /* nome mancante = evidenziato */
+  @media print{ .pn-label{border:none; background:none; padding:0; min-height:0; flex:0 1 auto} .pn-label::placeholder{color:transparent} }
   .check .desc .na-toggle{display:inline-flex; align-items:center; gap:5px; font-weight:500; font-size:12px; color:var(--muted); margin-left:10px; cursor:pointer}
   .esito{display:flex; gap:4px}
   .esito button{flex:1; font:600 12px/1 var(--sans); cursor:pointer; padding:6px 4px; border:1px solid var(--line-strong);
@@ -321,7 +328,7 @@
   <div class="toolbar-in"><svg class="wlogo" viewBox="0 0 760 245"><use href="#wlogo"/></svg>
     <div class="tb-right">
       <div class="tb-titlerow">
-        <h1>Collaudo Plasma <span>· Warcom · V0.10 (bozza)</span></h1>
+        <h1>Collaudo Plasma <span>· Warcom · V0.11 (bozza)</span></h1>
         <span class="save-state" id="saveState">—</span>
       </div>
       <div class="tb-actions">
@@ -543,7 +550,11 @@ const CHECKLIST = [
     "Viti pipette EV","Copiare DB_laser e salvarlo come DB_Usr","Controllo traduzioni e lingua"]},
   {id:"sicurezza", t:"Sistemi di sicurezza", voci:[
     "Fotocellule (singole + logica interventi)","Taratura caduta pezzo","Luci / spie","Elettro serratura porta",
-    "Elettro serratura banco mobile","Controllo semaforo","Emergenza pulpito"]},
+    "Elettro serratura banco mobile","Controllo semaforo"]},
+  {id:"emerg", t:"Emergenze", perN:{key:"emergenze", label:"Emergenza"}, voci:[
+    "Arresto effettivo (tutti i movimenti si fermano)","Ripristino (riarmo e ripartenza)"]},
+  {id:"accessi", t:"Accessi (cancelli, portelloni, ripari interbloccati)", perN:{key:"accessi", label:"Accesso"}, voci:[
+    "Apertura → arresto / inibizione movimenti","Chiusura → ripristino consenso"]},
 ];
 
 const MATERIALI = ["","Ferro (O2)","Ferro (N2)","Inox","Alluminio","Altro"];
@@ -788,13 +799,14 @@ function renderComponenti(){
     body.appendChild(inv);
   }
 
-  // Motori per asse: tutti. Cavo encoder solo sugli EBS (ED4 e inverter: cavo motore unico)
+  // Motori per asse: tutti. Cavi per tipo: EBS = cavo motore + cavo encoder · ED4 = cavo motore unico · inverter = nessun cavo
   const mot=el(`<div class="comp"><h3>Motori per asse <span class="tag">${state.assi.length} assi</span></h3></div>`);
   perLane(mot, ()=>true, a=>{
-    const ebs=tipoOf(a)==="EBS";
-    const row=axisRow(a, ebs?3:4), g=row.querySelector(".grid");
-    const campi=[["modello","Modello"],["serie","N° serie",1],["codice","Code ord.",1],["cavoMot","Cavo motore",1]];
-    if(ebs) campi.push(["cavoEnc","Cavo encoder",1]);
+    const t=tipoOf(a);
+    const row=axisRow(a, t==="ED4"?4:3), g=row.querySelector(".grid");
+    const campi=[["modello","Modello"],["serie","N° serie",1],["codice","Code ord.",1]];
+    if(t!=="INV") campi.push(["cavoMot","Cavo motore",1]);
+    if(t==="EBS") campi.push(["cavoEnc","Cavo encoder",1]);
     campi.forEach(([k,l,code])=> g.appendChild(fieldEl(`motore.${a}.${k}`, {l,code})));
     return row;
   });
@@ -802,22 +814,43 @@ function renderComponenti(){
 }
 
 /* ====== RENDER: CHECKLIST ====== */
+/* ====== RIFERIMENTI + GRUPPI A NUMERO VARIABILE ======
+   rifOf(key) → "C.4" · per asse "F.U.3" · per gruppo "E.EB80_1.2" · perN "C.2.1" (emergenza 2, voce 1) · richiesta aggiunta "Q.r1".
+   La lettera è la POSIZIONE della sezione in CHECKLIST (o sec.cod se dichiarato): le sezioni nuove vanno IN CODA, mai in mezzo,
+   altrimenti i riferimenti citati nelle mail slittano. */
+function rifSec(sec){ if(sec.cod) return sec.cod; const i=CHECKLIST.findIndex(x=>x.id===sec.id); return i<26 ? String.fromCharCode(65+i) : "A"+String.fromCharCode(65+i-26); }
+function rifOf(key){ const p=key.split("."); const sec=CHECKLIST.find(x=>x.id===p[0]); const L=sec?rifSec(sec):"?";
+  if(p.length===2) return `${L}.${+p[1]+1}`; if(p[1]==="dyn") return `${L}.r${+p[2]+1}`; return `${L}.${p.slice(1,-1).join(".")}.${+p[p.length-1]+1}`; }
+/* perN:{key,label} → gruppi "1".."N"; N sta in state.conteggi[key] (min 1); etichetta libera per gruppo in state.conteggiLabel[key][n] */
+function conteggioDi(sec){ return Math.max(1, +((state.conteggi||{})[sec.perN.key]||1)); }
+function gruppiDi(sec){ return sec.perN ? Array.from({length:conteggioDi(sec)},(_,k)=>String(k+1)) : sec.perGruppo; }
+function gruppoHead(sec,grp){
+  if(!sec.perN) return `<div class="axis-sub"><h4>${esc(grp)}</h4></div>`;
+  const lbl=((state.conteggiLabel||{})[sec.perN.key]||{})[grp]||"";
+  const ex = sec.perN.key==="accessi" ? "Cancello frontale" : "Pulsante pulpito P1";
+  return `<div class="axis-sub"><h4 class="pn-head"><span>${esc(sec.perN.label)} ${esc(grp)}</span><input class="pn-label" data-pn-label="${sec.perN.key}:${grp}" value="${esc(lbl)}" placeholder="Nome, es. ${ex}" title="Come si chiama? Verrà stampato accanto al numero"></h4></div>`;
+}
+function perNButtons(sec){
+  const n=conteggioDi(sec), l=esc(sec.perN.label.toLowerCase());
+  return el(`<div class="sub-add no-print" style="margin-top:8px"><button class="btn btn-accent" data-add-n="${sec.id}">+ Aggiungi ${l}</button>${n>1?`<button class="mini-del" data-del-n="${sec.id}">Rimuovi ${l} ${n}</button>`:""}</div>`);
+}
 function renderChecklist(){
   const body=document.getElementById("checklistBody"); body.innerHTML="";
   CHECKLIST.forEach(sec=>{
-    const blk=el(`<div class="sec-group"><h3>${esc(sec.t)}</h3></div>`);
+    const blk=el(`<div class="sec-group"><h3><span class="rif">${rifSec(sec)}</span>${esc(sec.t)}</h3></div>`);
     if(sec.perAsse){
       assiOrdinati().forEach(a=>{
         const sub=el(`<div class="axis-sub"><h4>Asse ${esc(a)}</h4></div>`);
         sec.voci.forEach((v,i)=> sub.appendChild(buildCheck(`${sec.id}.${a}.${i}`, v)));
         blk.appendChild(sub);
       });
-    } else if(sec.perGruppo){
-      sec.perGruppo.forEach(grp=>{
-        const sub=el(`<div class="axis-sub"><h4>${esc(grp)}</h4></div>`);
+    } else if(sec.perGruppo||sec.perN){
+      gruppiDi(sec).forEach(grp=>{
+        const sub=el(gruppoHead(sec,grp));
         sec.voci.forEach((v,i)=> sub.appendChild(buildCheck(`${sec.id}.${grp}.${i}`, v)));
         blk.appendChild(sub);
       });
+      if(sec.perN) blk.appendChild(perNButtons(sec));
     } else {
       sec.voci.forEach((v,i)=> blk.appendChild(buildCheck(`${sec.id}.${i}`, v)));
       if(sec.dynamic){
@@ -846,7 +879,7 @@ function buildCheck(key, voce){
   const lockVal = off || na;               // su N.A. o "non presente" la riga si blocca, nome tecnico incluso
   const disVal = lockVal ? 'disabled' : '';
   const row=el(`<div class="check${off?' off':''}" data-key="${key}">
-    <div class="desc">${esc(desc)}${obj.oscurabile?
+    <div class="desc"><span class="rif">${rifOf(key)}</span>${esc(desc)}${obj.oscurabile?
       `<label class="na-toggle no-print"><input type="checkbox" data-off="${key}" ${off?'checked':''}> non presente</label>`:""}</div>
     <div class="field"><label>Esito</label>
       <div class="esito" role="group">
@@ -910,7 +943,7 @@ function lockRow(key){
 function countChecks(){
   let total=0, done=0;
   CHECKLIST.forEach(sec=>{
-    const mult = sec.perAsse?state.assi.length : (sec.perGruppo?sec.perGruppo.length:1);
+    const mult = sec.perAsse?state.assi.length : ((sec.perGruppo||sec.perN)?gruppiDi(sec).length:1);
     total += sec.voci.length*mult;
     if(sec.dynamic && state.extraVoci && state.extraVoci[sec.id]) total += state.extraVoci[sec.id].length;
   });
@@ -1165,7 +1198,7 @@ const REQUIRED = [
 function eachCheckKey(cb){
   CHECKLIST.forEach(sec=>{
     if(sec.perAsse){ assiOrdinati().forEach(a=> sec.voci.forEach((vc,i)=> cb(`${sec.id}.${a}.${i}`, descOf(vc), `${sec.t} · Asse ${a}`))); }
-    else if(sec.perGruppo){ sec.perGruppo.forEach(grp=> sec.voci.forEach((vc,i)=> cb(`${sec.id}.${grp}.${i}`, descOf(vc), `${sec.t} · ${grp}`))); }
+    else if(sec.perGruppo||sec.perN){ gruppiDi(sec).forEach(grp=> sec.voci.forEach((vc,i)=> cb(`${sec.id}.${grp}.${i}`, descOf(vc), `${sec.t} · ${grp}`))); }
     else {
       sec.voci.forEach((vc,i)=> cb(`${sec.id}.${i}`, descOf(vc), sec.t));
       if(sec.dynamic && state.extraVoci && state.extraVoci[sec.id]) state.extraVoci[sec.id].forEach((lbl,i)=> cb(`${sec.id}.dyn.${i}`, lbl, sec.t));
@@ -1234,17 +1267,17 @@ function exportCsv(){
    ["Assi ED4 per power supply", psLanes().map((l,k)=>`PS${k+1}: ${l.join(" ")||"—"}`).join(" | ")]].forEach(r=>L.push(csvRow(r)));
   L.push("");
   L.push("CHECKLIST");
-  L.push(csvRow(["Sezione","Voce","Asse/Gruppo","Esito","Tecnico","Valore/Note","Opzione"]));
+  L.push(csvRow(["Rif.","Sezione","Voce","Asse/Gruppo","Esito","Tecnico","Valore/Note","Opzione"]));
   CHECKLIST.forEach(sec=>{
     const emit=(key,desc,scope)=>{
       const v=state.valori[key]||{};
       const esito = v.off ? "non presente" : (ES[v.esito]||"");
       let note=v.note||"";
       if(v.extra){ const ex=Object.entries(v.extra).filter(([,x])=>x).map(([k,x])=>`${k}=${x}`).join(" · "); if(ex) note = note?`${note} · ${ex}`:ex; }
-      L.push(csvRow([sec.t, desc, scope||"", esito, v.tecnico||"", note, v.opt||""]));
+      L.push(csvRow([rifOf(key), sec.t, desc, scope||"", esito, v.tecnico||"", note, v.opt||""]));
     };
     if(sec.perAsse){ assiOrdinati().forEach(a=> sec.voci.forEach((vc,i)=> emit(`${sec.id}.${a}.${i}`, descOf(vc), "Asse "+a))); }
-    else if(sec.perGruppo){ sec.perGruppo.forEach(grp=> sec.voci.forEach((vc,i)=> emit(`${sec.id}.${grp}.${i}`, descOf(vc), grp))); }
+    else if(sec.perGruppo||sec.perN){ gruppiDi(sec).forEach(grp=> sec.voci.forEach((vc,i)=> emit(`${sec.id}.${grp}.${i}`, descOf(vc), grp))); }
     else {
       sec.voci.forEach((vc,i)=> emit(`${sec.id}.${i}`, descOf(vc), ""));
       if(sec.dynamic && state.extraVoci && state.extraVoci[sec.id]) state.extraVoci[sec.id].forEach((lbl,i)=> emit(`${sec.id}.dyn.${i}`, lbl, "richiesta commessa"));
@@ -1265,6 +1298,7 @@ function exportCsv(){
 document.addEventListener("input", e=>{
   const t=e.target;
   if(t.classList && t.classList.contains("invalid")) t.classList.remove("invalid");
+  if(t.dataset.pnLabel!==undefined){ const [k,g]=t.dataset.pnLabel.split(":"); if(!state.conteggiLabel) state.conteggiLabel={}; if(!state.conteggiLabel[k]) state.conteggiLabel[k]={}; state.conteggiLabel[k][g]=t.value; scheduleSave(); return; }
   if(t.dataset.path!==undefined){ setVal(t.dataset.path, t.value); if(t.dataset.path.startsWith("testata")) updatePrintHead();
     if(t.dataset.path==="psN"){ renderAxes(); renderComponenti(); autosizeAll(); }
     updateGates(); scheduleSave(); }
@@ -1309,6 +1343,13 @@ document.addEventListener("click", e=>{
   else if(t.dataset.delProva!==undefined){ state.prove.splice(+t.dataset.delProva,1); renderProve(); autosizeAll(); scheduleSave(); }
   else if(t.dataset.addFoto!==undefined){ document.querySelector(`[data-foto-input="${t.dataset.addFoto}"]`).click(); }
   else if(t.dataset.delFoto!==undefined){ const [i,j]=t.dataset.delFoto.split(":").map(Number); state.prove[i].foto.splice(j,1); renderProve(); autosizeAll(); scheduleSave(); }
+  else if(t.dataset.addN!==undefined){ const sec=CHECKLIST.find(x=>x.id===t.dataset.addN); if(!state.conteggi) state.conteggi={}; state.conteggi[sec.perN.key]=conteggioDi(sec)+1; renderChecklist(); autosizeAll(); scheduleSave(); }
+  else if(t.dataset.delN!==undefined){ const sec=CHECKLIST.find(x=>x.id===t.dataset.delN); const n=conteggioDi(sec); if(n<=1) return;
+    const pre=`${sec.id}.${n}.`; const has=Object.keys(state.valori).some(k=>{ const v=state.valori[k]||{}; return k.startsWith(pre) && (v.esito||v.fat||v.sat||v.note||v.noteFat||v.noteSat||v.tecnico||v.tecnicoFat||v.tecnicoSat); });
+    if(has && !confirm(`${sec.perN.label} ${n} ha già dei dati: rimuoverla?`)) return;
+    Object.keys(state.valori).forEach(k=>{ if(k.startsWith(pre)) delete state.valori[k]; });
+    if(state.conteggiLabel && state.conteggiLabel[sec.perN.key]) delete state.conteggiLabel[sec.perN.key][n];
+    if(!state.conteggi) state.conteggi={}; state.conteggi[sec.perN.key]=n-1; renderChecklist(); autosizeAll(); scheduleSave(); }
   else if(t.dataset.addDyn!==undefined){
     const sid=t.dataset.addDyn; const inp=document.querySelector(`[data-dyn-input="${sid}"]`);
     const label=(inp&&inp.value||"").trim(); if(!label)return;
