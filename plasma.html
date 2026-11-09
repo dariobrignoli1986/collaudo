@@ -328,7 +328,7 @@
   <div class="toolbar-in"><svg class="wlogo" viewBox="0 0 760 245"><use href="#wlogo"/></svg>
     <div class="tb-right">
       <div class="tb-titlerow">
-        <h1>Collaudo Plasma <span>· Warcom · V0.11 (bozza)</span></h1>
+        <h1>Collaudo Plasma <span>· Warcom · V0.13 (bozza)</span></h1>
         <span class="save-state" id="saveState">—</span>
       </div>
       <div class="tb-actions">
@@ -492,26 +492,28 @@ const COMPONENTI = [
   {id:"pannello", t:"Pannello operatore", secondari:true, campi:[
     {k:"modello",l:"Modello"},{k:"serie",l:"N° di serie",code:1},{k:"codice",l:"Code ordinazione",code:1},
     {k:"lan1",l:"Indirizzo LAN1",code:1},{k:"lan2",l:"Indirizzo LAN2",code:1},{k:"subnet",l:"Subnet Mask",code:1}]},
-  {id:"rack", t:"Rack CN Esa", campi:[
-    {k:"modello",l:"Modello"},{k:"serie",l:"N° di serie",code:1},{k:"codice",l:"Code ordinazione",code:1},
-    {k:"ip",l:"Indirizzo IP",code:1},{k:"lan",l:"Collegato a",type:"lan"}]},
-  {id:"software", t:"Versione Software", campi:[
-    {k:"plc",l:"Versione PLC User",code:1},{k:"iso",l:"Versione ISO User",code:1},{k:"ambiente",l:"Ambiente"}]},
+  {id:"software", t:"Software CN", campi:[
+    {k:"taglio",l:"Taglio termico",code:1},{k:"ambiente",l:"Ambiente Kvara",code:1},{k:"rilascio",l:"Data rilascio",code:1},
+    {k:"plc",l:"Versione PLC",code:1},{k:"iso",l:"Versione ISO",code:1}]},
+  {id:"rack", t:"Cestello CN", campi:[
+    {k:"modello",l:"Modello"},{k:"serie",l:"N° di serie",code:1},{k:"codice",l:"Code ordinazione",code:1}]},
+  {id:"sorgente", t:"Generatore plasma", campi:[
+    {k:"modello",l:"Modello"},{k:"serial",l:"N° di serie",code:1},{k:"pn",l:"P/N",code:1}]},
+  {id:"gas", t:"Gas consolle", campi:[
+    {k:"tipo",l:"Tipo consolle",type:"sel",opts:["","Manuale","Automatica"]},
+    {k:"modello",l:"Modello"},{k:"serial",l:"N° di serie",code:1},{k:"pn",l:"P/N",code:1}]},
+  {id:"ignition", t:"Ignition consolle", campi:[
+    {k:"modello",l:"Modello"},{k:"serial",l:"N° di serie",code:1},{k:"pn",l:"P/N",code:1}]},
   {id:"quadro", t:"Quadro elettrico", campi:[
     {k:"fornitore",l:"Fornitore"},{k:"schema",l:"N° schema elettrico",code:1},{k:"appar",l:"N° Apparecchiatura",code:1}]},
-  {id:"sorgente", t:"Sorgente laser", campi:[
-    {k:"modello",l:"Modello"},{k:"serial",l:"Serial Number",code:1},{k:"ip",l:"Indirizzo IP",code:1},
-    {k:"lan",l:"Collegato a",type:"lan"},{k:"fibra",l:"Note fibra ottica"}]},
-  {id:"chiller", t:"Chiller", campi:[
-    {k:"modello",l:"Modello"},{k:"cfg",l:"CFG code",code:1},{k:"order",l:"Order",code:1}]},
-  {id:"filtro", t:"Filtro aspiratore", campi:[
-    {k:"modello",l:"Modello"},{k:"serial",l:"Serial Number",code:1},
-    {k:"atex",l:"Atex",type:"sel",opts:["","Sì","No"]},{k:"serranda",l:"Serranda Auto.",type:"sel",opts:["","Sì","No"]},{k:"note",l:"Note",full:1}]},
-  {id:"ev", t:"Elettrovalvola proporzionale", campi:[
-    {k:"fornitore",l:"Fornitore"},{k:"matricola",l:"Matricola n°",code:1},{k:"modello",l:"Modello"}]},
-  {id:"testa", t:"Testa di taglio", campi:[
-    {k:"fornitore",l:"Fornitore"},{k:"matricola",l:"Matricola n°",code:1},{k:"modello",l:"Modello"},
-    {k:"ugelli",l:"Ugelli"},{k:"ceramico",l:"Ceramico"},{k:"vetrini",l:"Vetrini"}]},
+  {id:"cadcam", t:"Software Cad/Cam", campi:[
+    {k:"fornitore",l:"Fornitore"},{k:"pacchetto",l:"Software e moduli",full:1}]},
+  {id:"impianto", t:"Impianto elettrico", campi:[
+    {k:"cavi",l:"Preparazione cavi"},{k:"bordo",l:"Bordo macchina"}]},
+  {id:"filtro", t:"Aspiratore", campi:[
+    {k:"fornitore",l:"Fornitore"},{k:"serial",l:"Matricola n°",code:1},{k:"modello",l:"Modello"},
+    {k:"portata",l:"Portata (m³/h)",code:1},{k:"ciclica",l:"Scheda ciclica",type:"sel",opts:["","Sì","No"]},
+    {k:"motovent",l:"Motoventilatore (kW)",code:1},{k:"qeFornitore",l:"Quadro elettrico (fornitore)"},{k:"note",l:"Note",full:1}]},
 ];
 
 // Checklist. voce = stringa | {desc, sel:[...], oscurabile, noNote, extra:[{k,l,code}]}
@@ -520,49 +522,52 @@ const COMPONENTI = [
 //   noNote     → riga con solo Esito + Tecnico (niente campo Valore/note)
 //   extra      → campi valore aggiuntivi a piena larghezza (es. M1/M2 per angolo)
 // sezione con dynamic:true → voci fisse + righe "richiesta particolare" aggiungibili dall'utente
+// Contenuti dal foglio cartaceo "Modulo produzione PLASMA" M_Prd_13 (W-POWER/M 60-25, matr. 21076, 09/05/2022).
 const CHECKLIST = [
   {id:"prelim", t:"Operazioni preliminari", voci:[
     "Verifica Distinta Macchina","Controllo fasi di alimentazione","Chiusura fusibili e verifica tensioni",
-    "Jumper analogica a 10 V","Nodo schede ausiliarie","Impostazione timer reset sicurezze","Collegamento aria",
-    "Pressostato aria a 7 bar","Pressostato prop. enable a 6,5 bar","Pressostati ausiliari a 2 bar",
-    "Messa in bolla macchina","Impostazioni pompette grasso","Impostazioni LAN (indirizzo IP)"]},
+    "Collegamento aria","Messa in bolla macchina","Impostazioni pompette grasso","Impostazioni LAN (indirizzo IP)"]},
   {id:"sw", t:"Installazione software", voci:[
-    "Autosetup CN","Installazione software sorgente","Installazione software telecamera (IP)","Installazione software Notepad++"]},
-  {id:"startup", t:"Startup sorgente laser", voci:["Collegamento sorgente-CN (indirizzo IP)"]},
-  {id:"fibra", t:"Collegamento fibra ottica-testa", voci:[
-    "Fibra ottica in asse testa","Rotazione connettore (0/90/180/270)","Controllo collegamenti acqua"]},
-  {id:"movim", t:"Prima movimentazione", perAsse:true, voci:[
-    "Verifica senso rotazione","Accoppiamento (meccanico)","Velocità dal CN / fattore conversione",
-    "Taratura / finecorsa asse reale","Inversioni / finecorsa asse virtuale"]},
-  {id:"eb80", t:"Valvole EB80", perGruppo:["M1","M2","Basamento"], voci:[
-    "Indirizzamento isola EB80","Test elettrovalvole","Verifica tenuta / pressione"]},
-  {id:"mandrino", t:"Mandrino", perGruppo:["M1","M2"], voci:[
-    "Taratura potenziometri","Allineamenti meccanici"]},
-  {id:"cnparam", t:"Parametri CN per sorgente laser", voci:[
-    "Potenza nominale sorgente", {desc:"Parametri PWM", sel:["non combined","combined"]}]},
-  {id:"testa", t:"Taratura testa", voci:[
-    "Quote calibrazione testa", {desc:"Impostazione centralina Precitec", oscurabile:true},
-    "Controllo altezza sensore capacitivo","Centraggio nozzle","Test di sparo con frequenza 1 Hz",
-    "Inserimento parametri sparo","Ricerca saldatura"]},
-  {id:"i40", t:"Industria 4.0", voci:["Installazione programma e verifica funzionamento con telecamera"]},
-  {id:"finitura", t:"Finitura", voci:[
-    "Numeri valvole e targhette","Backup su server","Pulizia quadro elettrico","Condizionatore quadro elettrico",
-    "Viti pipette EV","Copiare DB_laser e salvarlo come DB_Usr","Controllo traduzioni e lingua"]},
+    "Jumper 3 per AUTOSETUP","Autosetup CN","Installazione software generatore","Installazione software Cad/Cam"]},
+  {id:"primo", t:"Primo movimento", voci:[
+    "Verifica ingressi al CN (monitor I/O)","Verifica vasche aspirazione (monitor I/O e apertura fisica)",
+    "Prova movimento aspiratore START / STOP / START da remoto","Senso rotazione ventilatore aspiratore",
+    "Inserire liquido refrigerante generatore", {desc:"RTCP tuning per assi polari A e B", oscurabile:true}]},
+  {id:"movim", t:"Assi", perAsse:true, voci:[
+    "Rotazione conteggio","Accoppiamento (meccanico)","Velocità dal CN",
+    {desc:"Correnti nominale / spunto", extra:[{k:"inom",l:"Corrente nominale",code:1},{k:"ispunto",l:"Corrente di spunto",code:1}]},
+    "Verifica finecorsa hardware / software",
+    {desc:"Taratura (inversioni)", extra:[{k:"invTeo",l:"Inversioni teoriche",code:1},{k:"invReali",l:"Inversioni reali",code:1}]}]},
+  {id:"gasverif", t:"Verifica gas", voci:["Perdite negli attacchi","Perdite nel circuito"]},
+  {id:"torcia", t:"Torcia e banco", voci:[
+    "Verifica anticollisione torcia","Verifica centraggio puntatore di taglio","Verifica perpendicolarità torcia",
+    {desc:"Verifica offset oxitaglio", oscurabile:true},{desc:"Verifica offset trapanino", oscurabile:true},
+    {desc:"Verifica taglio oxitaglio", oscurabile:true},"Verifica diagonali banco","Prova taglio manuale"]},
   {id:"sicurezza", t:"Sistemi di sicurezza", voci:[
-    "Fotocellule (singole + logica interventi)","Taratura caduta pezzo","Luci / spie","Elettro serratura porta",
-    "Elettro serratura banco mobile","Controllo semaforo"]},
+    "Fotocellule (singole + logica interventi)","Bumpers","Luci / spie","Controllo semaforo"]},
   {id:"emerg", t:"Emergenze", perN:{key:"emergenze", label:"Emergenza"}, voci:[
     "Arresto effettivo (tutti i movimenti si fermano)","Ripristino (riarmo e ripartenza)"]},
   {id:"accessi", t:"Accessi (cancelli, portelloni, ripari interbloccati)", perN:{key:"accessi", label:"Accesso"}, voci:[
     "Apertura → arresto / inibizione movimenti","Chiusura → ripristino consenso"]},
+  {id:"manuali", t:"Manuali (lingua nel campo valore)", dynamic:true, voci:[
+    "Instruction manual generatore","Manuale hardware Esa-GV","Manuale hardware interfaccia generatore Esa-GV",
+    {desc:"Guida breve Esa-GV", oscurabile:true},{desc:"Manuale Cad/Cam", oscurabile:true},
+    {desc:"Manuale istruzione Selema", oscurabile:true},"Manuale uso e manutenzione aspiratore","Libro macchina Warcom",
+    "Manuale fotocellule",{desc:"Manuale control unit (Pepperl+Fuchs)", oscurabile:true},"Schema elettrico"]},
+  {id:"dotazioni", t:"Dotazioni di serie", dynamic:true, voci:[
+    "Starter kit consumabili",{desc:"Torce in dotazione extra (quick disconnect)", oscurabile:true},
+    "Liquido refrigerante in dotazione","Chiavi meccaniche","Chiave USB con parametri"]},
+  {id:"finitura", t:"Finitura", voci:[
+    "Numeri valvole e targhette","Copia parametri su server","Pulizia quadro elettrico","Condizionatore quadro elettrico",
+    "Industria 4.0: installazione programma e verifica funzionamento","Controllo traduzioni e lingua"]},
 ];
 
-const MATERIALI = ["","Ferro (O2)","Ferro (N2)","Inox","Alluminio","Altro"];
-const GAS = ["","O2","N2","Aria"];
+const MATERIALI = ["","Ferro","Inox","Alluminio","Altro"];
+const GAS = ["","O2 / Aria","Aria / Aria","N2 / N2","H35 / N2","F5 / N2","Oxitaglio","Altro"];
 const ESITI_SEL = ["","OK","KO","N.A."];
 
 /* ====== STATO ====== */
-const DEFAULT_ASSI = ["U","C1","C2","X","Z","Y","RC1","RC2","RC3","RC4","SC","RS1","RS2","RS3","RS4"];
+const DEFAULT_ASSI = ["X","U","Y","Z"];
 let state = loadState();
 
 function freshState(){
@@ -744,20 +749,7 @@ function renderComponenti(){
     body.appendChild(blk);
   });
 
-  // Telecamere (ripetibili)
-  const tcBlk=el(`<div class="comp"><h3>Telecamere <span class="tag">${state.telecamere.length}</span></h3></div>`);
-  state.telecamere.forEach((t,i)=>{
-    const row=el(`<div class="axis-row"><strong>Telecamera ${i+1}</strong><div class="grid c4" style="margin-top:6px"></div></div>`);
-    const g=row.querySelector(".grid");
-    g.appendChild(fieldEl(`telecamere.${i}.modello`, {l:"Modello"}));
-    g.appendChild(fieldEl(`telecamere.${i}.serie`, {l:"N° serie", code:1}));
-    g.appendChild(fieldEl(`telecamere.${i}.ip`, {l:"Indirizzo IP", code:1}));
-    g.appendChild(fieldEl(`telecamere.${i}.lan`, {l:"Collegato a", type:"lan"}));
-    if(state.telecamere.length>1) row.appendChild(el(`<button class="mini-del no-print" data-del-tc="${i}" style="margin-top:6px">Rimuovi telecamera</button>`));
-    tcBlk.appendChild(row);
-  });
-  tcBlk.appendChild(el(`<button class="btn btn-accent no-print" id="btnAddTc" style="margin-top:6px">+ Aggiungi telecamera</button>`));
-  body.appendChild(tcBlk);
+  // Plasma: niente telecamere (blocco rimosso il 2026-11-09; state.telecamere resta inerte per i vecchi .json)
 
   const nEBS=state.assi.filter(a=>tipoOf(a)==="EBS").length, nINV=state.assi.filter(a=>tipoOf(a)==="INV").length;
 
@@ -804,7 +796,7 @@ function renderComponenti(){
   perLane(mot, ()=>true, a=>{
     const t=tipoOf(a);
     const row=axisRow(a, t==="ED4"?4:3), g=row.querySelector(".grid");
-    const campi=[["modello","Modello"],["serie","N° serie",1],["codice","Code ord.",1]];
+    const campi=[["modello","Tipo motore"],["rpm","RPM",1],["serie","N° serie",1],["codice","Code ord.",1]];
     if(t!=="INV") campi.push(["cavoMot","Cavo motore",1]);
     if(t==="EBS") campi.push(["cavoEnc","Cavo encoder",1]);
     campi.forEach(([k,l,code])=> g.appendChild(fieldEl(`motore.${a}.${k}`, {l,code})));
@@ -1006,7 +998,7 @@ function renderProve(){
     g.appendChild(fieldSelect(`Materiale`, MATERIALI, p.materiale, i, "materiale"));
     g.appendChild(fieldText(`Spessore`, p.spessore, i, "spessore", "mm", 1));
     g.appendChild(fieldSelect(`Gas`, GAS, p.gas, i, "gas"));
-    g.appendChild(fieldText(`Geometria tubo`, p.geometria, i, "geometria", "es. tondo Ø40, quadro 40×40", 0));
+    g.appendChild(fieldText(`Corrente (A)`, p.corrente, i, "corrente", "es. 130", 1));
     g.appendChild(fieldSelect(`Esito`, ESITI_SEL, p.esito, i, "esito"));
     g.appendChild(fieldText(`Note`, p.note, i, "note", "", 0));
     // galleria foto
@@ -1079,7 +1071,7 @@ function renderAllegato(){
   state.prove.forEach((p,i)=>{
     if(!(p.foto&&p.foto.length)) return; any=true;
     const sp = p.spessore?` ${esc(p.spessore)} mm`:"";
-    const grp=el(`<div class="alleg-grp"><h4>Prova ${i+1} — ${esc(p.materiale||"")}${sp} ${esc(p.geometria||"")}</h4><div class="alleg-gal"></div></div>`);
+    const grp=el(`<div class="alleg-grp"><h4>Prova ${i+1} — ${esc(p.materiale||"")}${sp}${p.corrente?` · ${esc(p.corrente)} A`:""}</h4><div class="alleg-gal"></div></div>`);
     const g=grp.querySelector(".alleg-gal");
     p.foto.forEach(f=> g.appendChild(el(`<figure class="alleg-item"><img src="${f.data}" alt=""><figcaption>${esc(f.name)}</figcaption></figure>`)));
     body.appendChild(grp);
@@ -1285,8 +1277,8 @@ function exportCsv(){
   });
   L.push("");
   L.push("PROVE DI TAGLIO");
-  L.push(csvRow(["N","Materiale","Spessore (mm)","Gas","Geometria","Esito","Note","Foto"]));
-  state.prove.forEach((p,i)=> L.push(csvRow([i+1, p.materiale, p.spessore, p.gas, p.geometria, p.esito, p.note, (p.foto||[]).length])));
+  L.push(csvRow(["N","Materiale","Spessore (mm)","Gas","Corrente (A)","Esito","Note","Foto"]));
+  state.prove.forEach((p,i)=> L.push(csvRow([i+1, p.materiale, p.spessore, p.gas, p.corrente, p.esito, p.note, (p.foto||[]).length])));
   if(state.prove_extra && state.prove_extra.temperature){ L.push(""); L.push(csvRow(["Controllo temperature", state.prove_extra.temperature])); }
   if(state.note){ L.push(""); L.push(csvRow(["Note di collaudo", state.note])); }
   const csv="\ufeff"+L.join("\r\n");
