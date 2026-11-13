@@ -328,7 +328,7 @@
   <div class="toolbar-in"><svg class="wlogo" viewBox="0 0 760 245"><use href="#wlogo"/></svg>
     <div class="tb-right">
       <div class="tb-titlerow">
-        <h1>Collaudo Plasma <span>· Warcom · V0.13 (bozza)</span></h1>
+        <h1>Collaudo Plasma <span>· Warcom · V0.14 (bozza)</span></h1>
         <span class="save-state" id="saveState">—</span>
       </div>
       <div class="tb-actions">
@@ -499,6 +499,8 @@ const COMPONENTI = [
     {k:"modello",l:"Modello"},{k:"serie",l:"N° di serie",code:1},{k:"codice",l:"Code ordinazione",code:1}]},
   {id:"sorgente", t:"Generatore plasma", campi:[
     {k:"modello",l:"Modello"},{k:"serial",l:"N° di serie",code:1},{k:"pn",l:"P/N",code:1}]},
+  {id:"chiller", t:"Chiller", campi:[
+    {k:"modello",l:"Modello"},{k:"serial",l:"N° di serie",code:1},{k:"pn",l:"P/N",code:1}]},
   {id:"gas", t:"Gas consolle", campi:[
     {k:"tipo",l:"Tipo consolle",type:"sel",opts:["","Manuale","Automatica"]},
     {k:"modello",l:"Modello"},{k:"serial",l:"N° di serie",code:1},{k:"pn",l:"P/N",code:1}]},
@@ -560,6 +562,10 @@ const CHECKLIST = [
   {id:"finitura", t:"Finitura", voci:[
     "Numeri valvole e targhette","Copia parametri su server","Pulizia quadro elettrico","Condizionatore quadro elettrico",
     "Industria 4.0: installazione programma e verifica funzionamento","Controllo traduzioni e lingua"]},
+  {id:"chiller", t:"Chiller", voci:[
+    "Controllo temperatura low","Controllo temperatura high",
+    "Collegamento segnale allarme chiller generale (chiller → CNC)",
+    "Controllo livello liquido refrigerante"]},
 ];
 
 const MATERIALI = ["","Ferro","Inox","Alluminio","Altro"];
